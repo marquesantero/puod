@@ -1,0 +1,98 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Gateway",
+      "type": "coreclr",
+      "request": "launch",
+      "preLaunchTask": "build-gateway",
+      "program": "${workspaceFolder}/src/Gateway/bin/Debug/net8.0/Puod.Gateway.dll",
+      "args": [],
+      "cwd": "${workspaceFolder}/src/Gateway",
+      "stopAtEntry": false,
+      "serverReadyAction": {
+        "action": "openExternally",
+        "pattern": "\\bNow listening on:\\s+(https?://\\S+)"
+      },
+      "env": {
+        "ASPNETCORE_ENVIRONMENT": "Development"
+      }
+    },
+    {
+      "name": "User Service",
+      "type": "coreclr",
+      "request": "launch",
+      "preLaunchTask": "build-user-service",
+      "program": "${workspaceFolder}/src/Services/User/Puod.Services.User/bin/Debug/net8.0/Puod.Services.User.dll",
+      "args": [],
+      "cwd": "${workspaceFolder}/src/Services/User/Puod.Services.User",
+      "stopAtEntry": false,
+      "env": {
+        "ASPNETCORE_ENVIRONMENT": "Development"
+      }
+    },
+    {
+      "name": "Integration Service",
+      "type": "coreclr",
+      "request": "launch",
+      "preLaunchTask": "build-integration-service",
+      "program": "${workspaceFolder}/src/Services/Integration/Puod.Services.Integration/bin/Debug/net8.0/Puod.Services.Integration.dll",
+      "args": [],
+      "cwd": "${workspaceFolder}/src/Services/Integration/Puod.Services.Integration",
+      "stopAtEntry": false,
+      "env": {
+        "ASPNETCORE_ENVIRONMENT": "Development"
+      }
+    },
+    {
+      "name": "Monitoring Service",
+      "type": "coreclr",
+      "request": "launch",
+      "preLaunchTask": "build-monitoring-service",
+      "program": "${workspaceFolder}/src/Services/Monitoring/Puod.Services.Monitoring/bin/Debug/net8.0/Puod.Services.Monitoring.dll",
+      "args": [],
+      "cwd": "${workspaceFolder}/src/Services/Monitoring/Puod.Services.Monitoring",
+      "stopAtEntry": false,
+      "env": {
+        "ASPNETCORE_ENVIRONMENT": "Development"
+      }
+    },
+    {
+      "name": "Reporting Service",
+      "type": "coreclr",
+      "request": "launch",
+      "preLaunchTask": "build-reporting-service",
+      "program": "${workspaceFolder}/src/Services/Reporting/Puod.Services.Reporting/bin/Debug/net8.0/Puod.Services.Reporting.dll",
+      "args": [],
+      "cwd": "${workspaceFolder}/src/Services/Reporting/Puod.Services.Reporting",
+      "stopAtEntry": false,
+      "env": {
+        "ASPNETCORE_ENVIRONMENT": "Development"
+      }
+    },
+    {
+      "name": "Attach to Docker Container",
+      "type": "coreclr",
+      "request": "attach",
+      "processId": "${command:pickRemoteProcess}"
+    }
+  ],
+  "compounds": [
+    {
+      "name": "All Services",
+      "configurations": [
+        "Gateway",
+        "User Service",
+        "Integration Service",
+        "Monitoring Service",
+        "Reporting Service"
+      ],
+      "stopAll": true,
+      "presentation": {
+        "hidden": false,
+        "group": "microservices",
+        "order": 1
+      }
+    }
+  ]
+}

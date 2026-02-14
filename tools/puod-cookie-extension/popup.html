@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>PUOD Cookie Bridge</title>
+    <link rel="stylesheet" href="popup.css" />
+  </head>
+  <body>
+    <div class="container">
+      <header>
+        <h1>PUOD Cookie Bridge</h1>
+        <p>Send cookies to a PUOD integration.</p>
+      </header>
+
+      <label>
+        API Base URL
+        <input id="apiBaseUrl" type="url" placeholder="http://localhost:5278" />
+      </label>
+
+      <label>
+        Integration ID
+        <input id="integrationId" type="number" min="1" placeholder="123" />
+      </label>
+
+      <label>
+        Cookie Domain
+        <input id="cookieDomain" type="text" placeholder="example.com" />
+      </label>
+
+      <label>
+        Access Token
+        <input id="accessToken" type="password" placeholder="Paste access token" />
+      </label>
+
+      <div class="actions">
+        <button id="useTabToken" type="button">Use token from tab</button>
+        <button id="sendCookies" type="button">Send cookies</button>
+      </div>
+
+      <div id="status" class="status" role="status" aria-live="polite"></div>
+    </div>
+
+    <script src="popup.js"></script>
+  </body>
+</html>

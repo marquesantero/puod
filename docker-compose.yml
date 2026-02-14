@@ -1,0 +1,262 @@
+version: '3.8'
+
+services:
+  # ===== INFRAESTRUTURA =====
+
+  postgres:
+    image: timescale/timescaledb:latest-pg16
+    container_name: puod-postgres
+    environment:
+      POSTGRES_DB: ${PUOD_POSTGRES_DB:-puod}
+      POSTGRES_USER: ${PUOD_POSTGRES_USER:-puod_user}
+      POSTGRES_PASSWORD: ${PUOD_POSTGRES_PASSWORD:-puodPasswd@25}
+      PGDATA: /var/lib/postgresql/data/pgdata
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      # Commented out - conflicts with EF Migrations in bootstrap wizard
+      # - ./docker/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - puod-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${PUOD_POSTGRES_USER:-puod_user} -d ${PUOD_POSTGRES_DB:-puod}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: puod-redis
+    command: redis-server --appendonly yes --requirepass puod_redis_pass
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - puod-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    container_name: puod-rabbitmq
+    environment:
+      RABBITMQ_DEFAULT_USER: puod_user
+      RABBITMQ_DEFAULT_PASS: puod_rabbit_pass
+      RABBITMQ_DEFAULT_VHOST: /puod
+    ports:
+      - "5672:5672"   # AMQP
+      - "15672:15672" # Management UI
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+      - ./docker/rabbitmq/rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf
+    networks:
+      - puod-network
+    healthcheck:
+      test: rabbitmq-diagnostics -q ping
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  # ===== MICROSSERVIÇOS =====
+
+  gateway:
+    build:
+      context: .
+      dockerfile: src/Gateway/Dockerfile
+    container_name: puod-gateway
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_URLS=http://+:8080
+      - ConnectionStrings__Redis=puod-redis:6379,password=puod_redis_pass
+      - JwtSettings__Secret=your-256-bit-secret-key-change-in-production-min-32-chars
+      - JwtSettings__Issuer=https://puod.local
+      - JwtSettings__Audience=puod-api
+      - ReverseProxy__Clusters__user-cluster__Destinations__destination1__Address=http://user-service:8080
+      - ReverseProxy__Clusters__integration-cluster__Destinations__destination1__Address=http://integration-service:8080
+      - ReverseProxy__Clusters__studio-cluster__Destinations__destination1__Address=http://studio-service:8080
+    ports:
+      - "5000:8080"
+    depends_on:
+      redis:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+      studio-service:
+        condition: service_started
+    networks:
+      - puod-network
+    restart: unless-stopped
+
+  user-service:
+    build:
+      context: .
+      dockerfile: src/Services/User/Puod.Services.User/Dockerfile
+    container_name: puod-user-service
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_URLS=http://+:8080
+      - ConnectionStrings__DefaultConnection=Host=puod-postgres;Database=${PUOD_POSTGRES_DB:-puod};Username=${PUOD_POSTGRES_USER:-puod_user};Password=${PUOD_POSTGRES_PASSWORD:-puodPasswd@25}
+      - ConnectionStrings__Redis=puod-redis:6379,password=puod_redis_pass
+      - JwtSettings__Secret=your-256-bit-secret-key-change-in-production-min-32-chars
+      - JwtSettings__Issuer=https://puod.local
+      - JwtSettings__Audience=puod-api
+      - JwtSettings__ExpirationMinutes=60
+    ports:
+      - "5001:8080"
+    depends_on:
+      - postgres
+      - redis
+      - integration-service
+    networks:
+      - puod-network
+    restart: unless-stopped
+
+  integration-service:
+    build:
+      context: .
+      dockerfile: src/Services/Integration/Puod.Services.Integration/Dockerfile
+    container_name: puod-integration-service
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_URLS=http://+:8080
+      - ConnectionStrings__DefaultConnection=Host=puod-postgres;Database=${PUOD_POSTGRES_DB:-puod};Username=${PUOD_POSTGRES_USER:-puod_user};Password=${PUOD_POSTGRES_PASSWORD:-puodPasswd@25}
+      - ConnectionStrings__Redis=puod-redis:6379,password=puod_redis_pass
+      - RabbitMQ__Host=puod-rabbitmq
+      - RabbitMQ__Port=5672
+      - RabbitMQ__Username=puod_user
+      - RabbitMQ__Password=puod_rabbit_pass
+      - RabbitMQ__VirtualHost=/puod
+    ports:
+      - "5002:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - puod-network
+    restart: unless-stopped
+
+  monitoring-service:
+    build:
+      context: .
+      dockerfile: src/Services/Monitoring/Puod.Services.Monitoring/Dockerfile
+    container_name: puod-monitoring-service
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_URLS=http://+:8080
+      - ConnectionStrings__DefaultConnection=Host=puod-postgres;Database=${PUOD_POSTGRES_DB:-puod};Username=${PUOD_POSTGRES_USER:-puod_user};Password=${PUOD_POSTGRES_PASSWORD:-puodPasswd@25}
+      - ConnectionStrings__Redis=puod-redis:6379,password=puod_redis_pass
+      - RabbitMQ__Host=puod-rabbitmq
+      - RabbitMQ__Port=5672
+      - RabbitMQ__Username=puod_user
+      - RabbitMQ__Password=puod_rabbit_pass
+      - RabbitMQ__VirtualHost=/puod
+    ports:
+      - "5003:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - puod-network
+    restart: unless-stopped
+
+  reporting-service:
+    build:
+      context: .
+      dockerfile: src/Services/Reporting/Puod.Services.Reporting/Dockerfile
+    container_name: puod-reporting-service
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_URLS=http://+:8080
+      - ConnectionStrings__DefaultConnection=Host=puod-postgres;Database=${PUOD_POSTGRES_DB:-puod};Username=${PUOD_POSTGRES_USER:-puod_user};Password=${PUOD_POSTGRES_PASSWORD:-puodPasswd@25}
+      - ConnectionStrings__Redis=puod-redis:6379,password=puod_redis_pass
+      - RabbitMQ__Host=puod-rabbitmq
+      - RabbitMQ__Port=5672
+      - RabbitMQ__Username=puod_user
+      - RabbitMQ__Password=puod_rabbit_pass
+      - RabbitMQ__VirtualHost=/puod
+    ports:
+      - "5004:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - puod-network
+    restart: unless-stopped
+
+  studio-service:
+    build:
+      context: .
+      dockerfile: src/Services/Studio/Puod.Services.Studio/Dockerfile
+    container_name: puod-studio-service
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_URLS=http://+:8080
+      - ConnectionStrings__DefaultConnection=Host=puod-postgres;Database=${PUOD_POSTGRES_DB:-puod};Username=${PUOD_POSTGRES_USER:-puod_user};Password=${PUOD_POSTGRES_PASSWORD:-puodPasswd@25}
+      - IntegrationServiceUrl=http://integration-service:8080
+      - JwtSettings__Secret=your-256-bit-secret-key-change-in-production-min-32-chars
+      - JwtSettings__Issuer=https://puod.local
+      - JwtSettings__Audience=puod-api
+    ports:
+      - "5005:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - puod-network
+    restart: unless-stopped
+
+  # ===== FRONTEND =====
+
+  frontend:
+    build:
+      context: ./src/Frontend
+      dockerfile: Dockerfile
+    container_name: puod-frontend
+    environment:
+      - NODE_ENV=development
+      - VITE_API_URL=http://localhost:5000
+      - VITE_WS_URL=ws://localhost:5000
+      - VITE_API_PROXY_TARGET=http://puod-gateway:8080
+      - VITE_INTEGRATION_PROXY_TARGET=http://puod-gateway:8080
+      - VITE_STUDIO_PROXY_TARGET=http://puod-gateway:8080
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./src/Frontend:/app
+      - /app/node_modules
+    depends_on:
+      - gateway
+    networks:
+      - puod-network
+    restart: unless-stopped
+
+networks:
+  puod-network:
+    driver: bridge
+
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+  rabbitmq_data:
+    driver: local

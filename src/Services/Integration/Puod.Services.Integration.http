@@ -1,0 +1,6 @@
+@Puod.Services.Integration_HostAddress = http://localhost:5290
+
+GET {{Puod.Services.Integration_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

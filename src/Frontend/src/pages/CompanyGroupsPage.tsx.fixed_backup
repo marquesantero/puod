@@ -1,0 +1,678 @@
+import { useState, useEffect } from "react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { useI18n } from "@/contexts/I18nContext";
+import { Pencil, Trash2 } from "lucide-react";
+import {
+  getCompanyGroups,
+  getCompanyGroupById,
+  createCompanyGroup,
+  updateCompanyGroup,
+  deleteCompanyGroup,
+  type CompanyGroupListResponse,
+  type CompanyGroupDetailResponse,
+  type CompanyGroupCreateRequest,
+  type CompanyGroupUpdateRequest,
+} from "@/lib/companyGroupApi";
+import { getClients, type ClientListResponse } from "@/lib/clientApi";
+
+type CompanyGroupFormData = {
+  id?: string;
+  clientId: string;
+  name: string;
+  description: string;
+  isActive: boolean;
+};
+
+export default function CompanyGroupsPage() {
+  const { t } = useI18n();
+  const [groups, setGroups] = useState<CompanyGroupListResponse[]>([]);
+  const [clients, setClients] = useState<ClientListResponse[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [showForm, setShowForm] = useState(false);
+  const [showDetail, setShowDetail] = useState(false);
+  const [selectedGroup, setSelectedGroup] = useState<CompanyGroupDetailResponse | null>(null);
+  const [activeTab, setActiveTab] = useState<"basic" | "auth" | "integrations" | "companies">("basic");
+  const [formData, setFormData] = useState<CompanyGroupFormData>({
+    clientId: "",
+    name: "",
+    description: "",
+    isActive: true,
+  });
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [filterClientId, setFilterClientId] = useState<string>("all");
+
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  const loadData = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const [groupsData, clientsData] = await Promise.all([
+        getCompanyGroups(),
+        getClients(),
+      ]);
+      setGroups(groupsData || []);
+      setClients(clientsData || []);
+    } catch (err: any) {
+      console.error("Error loading data:", err);
+      setError(err.response?.data?.message || t("companyGroupsErrorLoadData"));
+      setGroups([]);
+      setClients([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+
+    try {
+      if (editingId) {
+        const updateData: CompanyGroupUpdateRequest = {
+          name: formData.name,
+          description: formData.description || undefined,
+          isActive: formData.isActive,
+        };
+        await updateCompanyGroup(editingId, updateData);
+      } else {
+        const createData: CompanyGroupCreateRequest = {
+          clientId: formData.clientId,
+          name: formData.name,
+          description: formData.description || undefined,
+        };
+        await createCompanyGroup(createData);
+      }
+      await loadData();
+      handleCancel();
+    } catch (err: any) {
+      console.error("Error saving company group:", err);
+      setError(err.response?.data?.message || t("companyGroupsErrorSave"));
+    }
+  };
+
+  const handleView = async (group: CompanyGroupListResponse) => {
+    try {
+      const detail = await getCompanyGroupById(group.id);
+      setSelectedGroup(detail);
+      setShowDetail(true);
+      setActiveTab("basic");
+    } catch (err: any) {
+      console.error("Error loading group details:", err);
+      setError(err.response?.data?.message || t("companyGroupsErrorDetails"));
+    }
+  };
+
+  const handleEdit = (group: CompanyGroupListResponse) => {
+    setFormData({
+      id: group.id,
+      clientId: group.clientId,
+      name: group.name,
+      description: group.description || "",
+      isActive: group.isActive,
+    });
+    setEditingId(group.id);
+    setShowForm(true);
+  };
+
+  const handleDelete = async (id: string) => {
+    if (!confirm(t("companyGroupsDeleteConfirm") || "Are you sure you want to delete this company group?")) return;
+
+    try {
+      await deleteCompanyGroup(id);
+      await loadData();
+    } catch (err: any) {
+      console.error("Error deleting company group:", err);
+      setError(err.response?.data?.message || t("companyGroupsErrorDelete"));
+    }
+  };
+
+  const handleCancel = () => {
+    setShowForm(false);
+    setEditingId(null);
+    setFormData({
+      clientId: "",
+      name: "",
+      description: "",
+      isActive: true,
+    });
+    setError(null);
+  };
+
+  const handleCloseDetail = () => {
+    setShowDetail(false);
+    setSelectedGroup(null);
+    setActiveTab("basic");
+  };
+
+  const filteredGroups = filterClientId === "all"
+    ? groups
+    : groups.filter(g => g.clientId === filterClientId);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <p className="text-gray-700 dark:text-gray-300">{t("loadingCompanyGroups")}</p>
+      </div>
+    );
+  }
+
+  // Detail View
+  if (showDetail && selectedGroup) {
+    return (
+      <div className="space-y-6">
+        <Card className="bg-gradient-to-br from-blue-50/50 to-cyan-50/50 dark:from-blue-950/20 dark:to-cyan-950/20 border-2 border-blue-200 dark:border-blue-800">
+          <CardHeader>
+            <div className="flex justify-between items-start">
+              <div>
+                <CardTitle className="text-3xl font-bold text-gray-900 dark:text-gray-100">
+                  {selectedGroup.name}
+                </CardTitle>
+                <div className="mt-2 flex gap-2 items-center">
+                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-gradient-to-r from-blue-500 to-cyan-500 text-white shadow-md">
+                    {selectedGroup.clientName}
+                  </span>
+                  <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold ${
+                    selectedGroup.isActive
+                      ? "bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-300"
+                      : "bg-red-100 text-red-800 dark:bg-red-900/50 dark:text-red-300"
+                  }`}>
+                    {selectedGroup.isActive ? t("active") : t("inactive")}
+                  </span>
+                </div>
+              </div>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  onClick={() => handleEdit({
+                    id: selectedGroup.id,
+                    clientId: selectedGroup.clientId,
+                    clientName: selectedGroup.clientName,
+                    name: selectedGroup.name,
+                    slug: selectedGroup.slug,
+                    description: selectedGroup.description,
+                    isActive: selectedGroup.isActive,
+                    companyCount: selectedGroup.companies.length,
+                    authProfileCount: selectedGroup.authProfiles.length,
+                    createdAt: selectedGroup.createdAt,
+                    updatedAt: selectedGroup.updatedAt,
+                  })}
+                >
+                  {t("edit")}
+                </Button>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="border-b-2 border-gray-200 dark:border-gray-700 mb-6">
+              <div className="flex space-x-2 overflow-x-auto">
+                <button
+                  type="button"
+                  onClick={() => setActiveTab("basic")}
+                  className={`px-4 py-2 font-medium transition-colors ${
+                    activeTab === "basic"
+                      ? "text-blue-600 dark:text-blue-400 border-b-2 border-blue-600 dark:border-blue-400"
+                      : "text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200"
+                  }`}
+                >
+                  {t("companyGroupsTabBasic") || "Basic Info"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setActiveTab("auth")}
+                  className={`px-4 py-2 font-medium transition-colors ${
+                    activeTab === "auth"
+                      ? "text-blue-600 dark:text-blue-400 border-b-2 border-blue-600 dark:border-blue-400"
+                      : "text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200"
+                  }`}
+                >
+                  {t("companyGroupsTabAuth") || "Authentication"} <span className="ml-1 px-2 py-0.5 bg-gray-100 dark:bg-gray-700 rounded-full text-xs">{selectedGroup.authProfiles.length}</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setActiveTab("integrations")}
+                  className={`px-4 py-2 font-medium transition-colors ${
+                    activeTab === "integrations"
+                      ? "text-blue-600 dark:text-blue-400 border-b-2 border-blue-600 dark:border-blue-400"
+                      : "text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200"
+                  }`}
+                >
+                  {t("companyGroupsTabIntegrations") || "Integrations"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setActiveTab("companies")}
+                  className={`px-4 py-2 font-medium transition-colors ${
+                    activeTab === "companies"
+                      ? "text-blue-600 dark:text-blue-400 border-b-2 border-blue-600 dark:border-blue-400"
+                      : "text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200"
+                  }`}
+                >
+                  {t("companyGroupsTabCompanies") || "Companies"} <span className="ml-1 px-2 py-0.5 bg-gray-100 dark:bg-gray-700 rounded-full text-xs">{selectedGroup.companies.length}</span>
+                </button>
+              </div>
+            </div>
+
+        {/* Tab Content */}
+        {activeTab === "basic" && (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="bg-white/60 dark:bg-gray-800/60 rounded-lg p-4 backdrop-blur-sm">
+              <Label className="text-gray-600 dark:text-gray-400 text-sm">{t("name") || "Name"}</Label>
+              <p className="font-semibold text-gray-900 dark:text-gray-100 mt-1">{selectedGroup.name}</p>
+            </div>
+            <div className="bg-white/60 dark:bg-gray-800/60 rounded-lg p-4 backdrop-blur-sm">
+              <Label className="text-gray-600 dark:text-gray-400 text-sm">{t("client") || "Client"}</Label>
+              <p className="font-semibold text-gray-900 dark:text-gray-100 mt-1">{selectedGroup.clientName}</p>
+            </div>
+            <div className="bg-white/60 dark:bg-gray-800/60 rounded-lg p-4 backdrop-blur-sm">
+              <Label className="text-gray-600 dark:text-gray-400 text-sm">{t("slug") || "Slug"}</Label>
+              <p className="font-semibold text-gray-900 dark:text-gray-100 mt-1">{selectedGroup.slug}</p>
+            </div>
+            <div className="bg-white/60 dark:bg-gray-800/60 rounded-lg p-4 backdrop-blur-sm">
+              <Label className="text-gray-600 dark:text-gray-400 text-sm">{t("status") || "Status"}</Label>
+              <p className={`font-semibold mt-1 ${selectedGroup.isActive ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"}`}>
+                {selectedGroup.isActive ? (t("active") || "Active") : (t("inactive") || "Inactive")}
+              </p>
+            </div>
+            {selectedGroup.description && (
+              <div className="col-span-1 md:col-span-2 bg-white/60 dark:bg-gray-800/60 rounded-lg p-4 backdrop-blur-sm">
+                <Label className="text-gray-600 dark:text-gray-400 text-sm">{t("description") || "Description"}</Label>
+                <p className="font-medium text-gray-900 dark:text-gray-100 mt-1">{selectedGroup.description}</p>
+              </div>
+            )}
+            <div className="bg-white/60 dark:bg-gray-800/60 rounded-lg p-4 backdrop-blur-sm">
+              <Label className="text-gray-600 dark:text-gray-400 text-sm">{t("createdAt") || "Created At"}</Label>
+              <p className="font-medium text-gray-900 dark:text-gray-100 mt-1">{new Date(selectedGroup.createdAt).toLocaleString()}</p>
+            </div>
+            {selectedGroup.updatedAt && (
+              <div className="bg-white/60 dark:bg-gray-800/60 rounded-lg p-4 backdrop-blur-sm">
+                <Label className="text-gray-600 dark:text-gray-400 text-sm">{t("updatedAt") || "Updated At"}</Label>
+                <p className="font-medium text-gray-900 dark:text-gray-100 mt-1">{new Date(selectedGroup.updatedAt).toLocaleString()}</p>
+              </div>
+            )}
+          </div>
+        )}
+
+        {activeTab === "auth" && (
+          <Card className="shadow-md">
+            <CardHeader>
+              <CardTitle>{t("companyGroupsAuthProfiles") || "Authentication Profiles"}</CardTitle>
+              <CardDescription>
+                {t("companyGroupsAuthDescription") || "Authentication profiles are shared across all companies in this group"}
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {selectedGroup.authProfiles.length === 0 ? (
+                <div className="text-center py-12 bg-gray-50 dark:bg-gray-900/50 rounded-lg">
+                  <p className="text-gray-500 dark:text-gray-400">
+                    {t("companyGroupsNoAuthProfiles") || "No authentication profiles configured yet"}
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {selectedGroup.authProfiles.map((profile) => (
+                    <div key={profile.id} className="border border-gray-200 dark:border-gray-700 rounded-lg p-4 bg-white dark:bg-gray-800 hover:shadow-md transition-shadow">
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <h4 className="font-semibold text-gray-900 dark:text-gray-100">{profile.name}</h4>
+                          <p className="text-sm text-blue-600 dark:text-blue-400 mt-1">{profile.providerType}</p>
+                        </div>
+                        <span className={`text-sm font-medium px-2 py-1 rounded ${profile.isActive ? "text-green-700 dark:text-green-400 bg-green-50 dark:bg-green-900/30" : "text-red-700 dark:text-red-400 bg-red-50 dark:bg-red-900/30"}`}>
+                          {profile.isActive ? (t("active") || "Active") : (t("inactive") || "Inactive")}
+                        </span>
+                      </div>
+                      <div className="mt-3 text-sm text-gray-600 dark:text-gray-400">
+                        {t("companyGroupsAuthCompanies") || "Companies"}: <span className="font-medium text-gray-900 dark:text-gray-100">{profile.companyIds.length}</span>
+                      </div>
+                      <div className="text-xs text-gray-500 dark:text-gray-400 mt-2 pt-2 border-t border-gray-200 dark:border-gray-700">
+                        {t("createdAt") || "Created"}: {new Date(profile.createdAt).toLocaleDateString()}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
+
+        {activeTab === "integrations" && (
+          <Card className="shadow-md">
+            <CardHeader>
+              <CardTitle>{t("companyGroupsIntegrations") || "Integrations"}</CardTitle>
+              <CardDescription>
+                {t("companyGroupsIntegrationsDescription") || "Integrations are shared across all companies in this group"}
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="text-center py-12 bg-gray-50 dark:bg-gray-900/50 rounded-lg">
+                <p className="text-gray-500 dark:text-gray-400">
+                  {t("companyGroupsIntegrationsManage") || "Manage integrations through the Integrations page"}
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {activeTab === "companies" && (
+          <Card className="shadow-md">
+            <CardHeader>
+              <CardTitle>{t("companyGroupsCompanies") || "Companies in this Group"}</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {selectedGroup.companies.length === 0 ? (
+                <div className="text-center py-12 bg-gray-50 dark:bg-gray-900/50 rounded-lg">
+                  <p className="text-gray-500 dark:text-gray-400">
+                    {t("companyGroupsNoCompanies") || "No companies in this group yet"}
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {selectedGroup.companies.map((company) => (
+                    <div key={company.id} className="border border-gray-200 dark:border-gray-700 rounded-lg p-4 bg-white dark:bg-gray-800 hover:shadow-md transition-shadow">
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <h4 className="font-semibold text-gray-900 dark:text-gray-100">{company.name}</h4>
+                          <p className="text-sm text-blue-600 dark:text-blue-400 mt-1">{company.slug}</p>
+                        </div>
+                        <span className={`text-sm font-medium px-2 py-1 rounded ${company.isActive ? "text-green-700 dark:text-green-400 bg-green-50 dark:bg-green-900/30" : "text-red-700 dark:text-red-400 bg-red-50 dark:bg-red-900/30"}`}>
+                          {company.isActive ? (t("active") || "Active") : (t("inactive") || "Inactive")}
+                        </span>
+                      </div>
+                      <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+                        <div className="flex items-center gap-2">
+                          <span className="text-gray-600 dark:text-gray-400">{t("companyGroupsInheritFromClient") || "Inherits from Client"}:</span>
+                          <span className="font-medium text-gray-900 dark:text-gray-100">{company.inheritFromClient ? (t("yes") || "Yes") : (t("no") || "No")}</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-gray-600 dark:text-gray-400">{t("users") || "Users"}:</span>
+                          <span className="font-medium text-gray-900 dark:text-gray-100">{company.userCount}</span>
+                        </div>
+                      </div>
+                      <div className="text-xs text-gray-500 dark:text-gray-400 mt-2 pt-2 border-t border-gray-200 dark:border-gray-700">
+                        {t("createdAt") || "Created"}: {new Date(company.createdAt).toLocaleDateString()}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
+      </div>
+    );
+  }
+
+  // List/Form View
+  return (
+    <div className="container mx-auto py-8 px-4 max-w-7xl">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">{t("companyGroups") || "Company Groups"}</h1>
+          <p className="text-gray-600 dark:text-gray-400 mt-1">{t("companyGroupsSubtitle") || "Manage your organization's company groups"}</p>
+        </div>
+        {!showForm && (
+          <Button onClick={() => setShowForm(true)} className="bg-blue-600 hover:bg-blue-700 text-white">
+            {t("companyGroupsCreate") || "Create New Company Group"}
+          </Button>
+        )}
+      </div>
+
+      {error && (
+        <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 px-4 py-3 rounded mb-4">
+          {error}
+        </div>
+      )}
+
+      {!showForm && groups.length > 0 && (
+        <div className="mb-6 bg-white dark:bg-gray-800 p-4 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
+          <Label htmlFor="filterClient" className="text-gray-700 dark:text-gray-300 font-medium">{t("companyGroupsFilterByClient") || "Filter by Client"}</Label>
+          <select
+            id="filterClient"
+            value={filterClientId}
+            onChange={(e) => setFilterClientId(e.target.value)}
+            className="w-full sm:w-64 border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 mt-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+          >
+            <option value="all">{t("companyGroupsAllClients") || "All Clients"}</option>
+            {clients.map((client) => (
+              <option key={client.id} value={client.id}>
+                {client.name}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
+
+      {showForm ? (
+        <Card className="bg-gradient-to-br from-blue-50/50 to-purple-50/50 dark:from-blue-950/20 dark:to-purple-950/20 border-2 border-blue-200 dark:border-blue-800">
+          <CardHeader className="bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-t-lg">
+            <CardTitle className="text-2xl">{editingId ? (t("companyGroupsEdit") || "Edit Company Group") : (t("companyGroupsCreate") || "Create New Company Group")}</CardTitle>
+            <CardDescription className="text-blue-100">
+              {editingId
+                ? (t("companyGroupsEditDescription") || "Update company group information")
+                : (t("companyGroupsCreateDescription") || "Add a new company group to your organization")}
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="pt-6">
+            <form onSubmit={handleSubmit}>
+              <div className="space-y-6 bg-white/60 dark:bg-gray-800/60 rounded-lg p-6 backdrop-blur-sm">
+                <div>
+                  <Label htmlFor="clientId">{t("client") || "Client"} *</Label>
+                  <select
+                    id="clientId"
+                    value={formData.clientId}
+                    onChange={(e) => setFormData({ ...formData, clientId: e.target.value })}
+                    className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                    required
+                    disabled={!!editingId}
+                  >
+                    <option value="">{t("companyGroupsSelectClient") || "Select a client"}</option>
+                    {clients.map((client) => (
+                      <option key={client.id} value={client.id}>
+                        {client.name}
+                      </option>
+                    ))}
+                  </select>
+                  {editingId && (
+                    <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{t("companyGroupsClientNoChange")}</p>
+                  )}
+                </div>
+
+                <div>
+                  <Label htmlFor="name">{t("companyGroupsName") || "Company Group Name"} *</Label>
+                  <Input
+                    id="name"
+                    value={formData.name}
+                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                    required
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="description">{t("description")}</Label>
+                  <textarea
+                    id="description"
+                    value={formData.description}
+                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                    className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 min-h-[100px] bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  />
+                </div>
+
+                {editingId && (
+                  <div className="flex items-center space-x-2">
+                    <input
+                      type="checkbox"
+                      id="isActive"
+                      checked={formData.isActive}
+                      onChange={(e) => setFormData({ ...formData, isActive: e.target.checked })}
+                      className="w-4 h-4 text-blue-600 bg-gray-100 dark:bg-gray-700 border-gray-300 dark:border-gray-600 rounded focus:ring-blue-500 focus:ring-2"
+                    />
+                    <Label htmlFor="isActive">{t("active")}</Label>
+                  </div>
+                )}
+              </div>
+
+              <div className="flex justify-end gap-3 mt-8 pt-6 border-t-2 border-gray-200 dark:border-gray-700">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={handleCancel}
+                  className="px-6 py-2 hover:bg-gray-100 dark:hover:bg-gray-700"
+                >
+                  {t("cancel") || "Cancel"}
+                </Button>
+                <Button
+                  type="submit"
+                  className="px-6 py-2 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-semibold shadow-lg"
+                >
+                  {editingId ? (t("update") || "Update") : (t("create") || "Create")} {t("companyGroups") || "Company Group"}
+                </Button>
+              </div>
+            </form>
+          </CardContent>
+        </Card>
+      ) : filteredGroups.length === 0 ? (
+        <div className="text-center py-16 bg-gray-50 dark:bg-gray-900/50 rounded-lg border-2 border-dashed border-gray-300 dark:border-gray-700">
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">
+            {groups.length === 0 ? t("companyGroupsNoGroups") : t("companyGroupsNoMatches")}
+          </h3>
+          <p className="text-gray-600 dark:text-gray-400 mb-6">
+            {groups.length === 0 ? t("companyGroupsEmptyStateCreate") : t("companyGroupsEmptyStateFilter")}
+          </p>
+          {groups.length === 0 && (
+            <Button onClick={() => setShowForm(true)} className="bg-blue-600 hover:bg-blue-700 text-white">
+              {t("companyGroupsCreate")}
+            </Button>
+          )}
+        </div>
+      ) : (
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+          {filteredGroups.map((group) => {
+            const cardColors = group.isActive
+              ? {
+                  gradient: "from-blue-50 to-cyan-50 dark:from-blue-950/30 dark:to-cyan-950/30",
+                  border: "border-blue-200 dark:border-blue-800",
+                  accent: "bg-gradient-to-r from-blue-500 to-cyan-500",
+                  text: "text-blue-700 dark:text-blue-300"
+                }
+              : {
+                  gradient: "from-slate-50 to-gray-50 dark:from-slate-950/30 dark:to-gray-950/30",
+                  border: "border-slate-200 dark:border-slate-800",
+                  accent: "bg-gradient-to-r from-slate-500 to-gray-500",
+                  text: "text-slate-700 dark:text-slate-300"
+                };
+
+            return (
+              <Card
+                key={group.id}
+                className={`
+                  relative overflow-hidden cursor-pointer
+                  bg-gradient-to-br ${cardColors.gradient}
+                  border-2 ${cardColors.border}
+                  hover:shadow-xl hover:scale-[1.02]
+                  transition-all duration-300
+                `}
+                onClick={() => handleView(group)}
+              >
+                <div className={`absolute top-0 right-0 w-24 h-24 ${cardColors.accent} opacity-10 rounded-bl-full`} />
+
+                <CardHeader className="relative pb-3">
+                  <div className="flex-1">
+                    <CardTitle className="text-xl font-bold text-gray-900 dark:text-gray-100">
+                      {group.name}
+                    </CardTitle>
+                    <div className="mt-2">
+                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-gradient-to-r from-blue-500 to-cyan-500 text-white shadow-md">
+                        {group.clientName}
+                      </span>
+                    </div>
+                    {group.description && (
+                      <p className="text-sm text-gray-600 dark:text-gray-400 mt-2 line-clamp-2">{group.description}</p>
+                    )}
+                  </div>
+                </CardHeader>
+
+                <CardContent className="relative">
+                  <div className="space-y-3">
+                    <div className="bg-white/60 dark:bg-gray-800/60 rounded-lg p-3 backdrop-blur-sm">
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                          {t("companies") || "Companies"}
+                        </span>
+                        <span className={`text-lg font-bold ${cardColors.text}`}>
+                          {group.companyCount}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="bg-white/60 dark:bg-gray-800/60 rounded-lg p-3 backdrop-blur-sm">
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                          {t("companyGroupsAuthProfiles") || "Auth Profiles"}
+                        </span>
+                        <span className={`text-lg font-bold ${cardColors.text}`}>
+                          {group.authProfileCount}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="bg-white/60 dark:bg-gray-800/60 rounded-lg p-3 backdrop-blur-sm">
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                          {t("status") || "Status"}
+                        </span>
+                        <span className={`
+                          inline-flex items-center px-2.5 py-0.5 rounded-full text-sm font-semibold
+                          ${group.isActive
+                            ? "bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-300"
+                            : "bg-red-100 text-red-800 dark:bg-red-900/50 dark:text-red-300"
+                          }
+                        `}>
+                          {group.isActive ? (t("active") || "Active") : (t("inactive") || "Inactive")}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="bg-white/60 dark:bg-gray-800/60 rounded-lg p-2 backdrop-blur-sm">
+                      <div className="text-xs text-gray-500 dark:text-gray-400 text-center">
+                        {t("createdAt") || "Created"}: {new Date(group.createdAt).toLocaleDateString()}
+                      </div>
+                    </div>
+
+                    <div className="flex justify-end gap-2 mt-4 pt-3 border-t border-gray-300/50 dark:border-gray-600/50" onClick={(e) => e.stopPropagation()}>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleEdit(group);
+                        }}
+                        className="p-2 rounded-md text-gray-500 hover:text-gray-700 hover:bg-white/80 dark:text-gray-400 dark:hover:text-gray-200 dark:hover:bg-gray-700/80 transition-colors"
+                        title={t("edit") || "Edit"}
+                      >
+                        <Pencil className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDelete(group.id);
+                        }}
+                        className="p-2 rounded-md text-gray-500 hover:text-red-600 hover:bg-white/80 dark:text-gray-400 dark:hover:text-red-400 dark:hover:bg-gray-700/80 transition-colors"
+                        title={t("delete") || "Delete"}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}

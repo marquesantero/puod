@@ -1,0 +1,22 @@
+{
+  "manifest_version": 3,
+  "name": "PUOD Cookie Bridge",
+  "version": "0.1.0",
+  "description": "Send browser cookies to PUOD integrations securely.",
+  "permissions": ["cookies", "storage", "activeTab", "scripting"],
+  "host_permissions": ["<all_urls>"],
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "PUOD Cookie Bridge"
+  },
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": ["http://localhost:*/*", "http://127.0.0.1:*/*"],
+      "js": ["content-script.js"],
+      "run_at": "document_start"
+    }
+  ]
+}

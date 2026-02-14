@@ -1,0 +1,805 @@
+import { useEffect, useMemo, useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useI18n } from "@/contexts/I18nContext";
+import { useToast } from "@/contexts/ToastContext";
+import {
+  createIntegration,
+  createIntegrationGroup,
+  deleteIntegration,
+  getCompanies,
+  getIntegrationOverview,
+} from "@/lib/integrationApi";
+import { getAuthProfiles, type AuthProfileListResponse } from "@/lib/authProfileApi";
+import type { IntegrationCompany, IntegrationGroup, IntegrationItem, IntegrationType } from "@/types/integrations";
+
+type WizardStep = "company" | "group" | "type" | "config";
+
+const integrationTypes: { id: IntegrationType; icon: JSX.Element }[] = [
+  {
+    id: "airflow",
+    icon: (
+      <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24">
+        <path d="M4 6h16M4 12h10M4 18h7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+      </svg>
+    ),
+  },
+  {
+    id: "adf",
+    icon: (
+      <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24">
+        <path d="M5 5h14v6H5zM5 13h8v6H5z" fill="none" stroke="currentColor" strokeWidth="2" />
+      </svg>
+    ),
+  },
+  {
+    id: "api",
+    icon: (
+      <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24">
+        <path d="M4 7h16M4 12h16M4 17h10" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+      </svg>
+    ),
+  },
+];
+
+const parseConfig = (value: string) => {
+  try {
+    return JSON.parse(value || "{}");
+  } catch {
+    return {};
+  }
+};
+
+export default function IntegrationsPage() {
+  const { t } = useI18n();
+  const { showToast } = useToast();
+  const [wizardOpen, setWizardOpen] = useState(false);
+  const [wizardStep, setWizardStep] = useState<WizardStep>("company");
+  const [error, setError] = useState("");
+  const [companies, setCompanies] = useState<IntegrationCompany[]>([]);
+  const [groups, setGroups] = useState<IntegrationGroup[]>([]);
+  const [integrations, setIntegrations] = useState<IntegrationItem[]>([]);
+  const [authProfiles, setAuthProfiles] = useState<AuthProfileListResponse[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [selectedCompanyId, setSelectedCompanyId] = useState("");
+  const [useNewGroup, setUseNewGroup] = useState(false);
+  const [selectedGroupId, setSelectedGroupId] = useState("");
+  const [newGroupName, setNewGroupName] = useState("");
+  const [selectedType, setSelectedType] = useState<IntegrationType | null>(null);
+  const [integrationName, setIntegrationName] = useState("");
+  const [integrationDescription, setIntegrationDescription] = useState("");
+  const [baseUrl, setBaseUrl] = useState("");
+  const [authType, setAuthType] = useState("cookie");
+  const [tenantId, setTenantId] = useState("");
+  const [clientId, setClientId] = useState("");
+  const [clientSecret, setClientSecret] = useState("");
+  const [showSecret, setShowSecret] = useState(false);
+  const [subscriptionId, setSubscriptionId] = useState("");
+  const [resourceGroup, setResourceGroup] = useState("");
+  const [factoryName, setFactoryName] = useState("");
+  const [tokenValue, setTokenValue] = useState("");
+  const [authProfileId, setAuthProfileId] = useState("");
+
+  const groupsForCompany = groups.filter((group) => group.companyId === selectedCompanyId);
+  const integrationsForCompany = integrations.filter((integration) => integration.companyId === selectedCompanyId);
+
+  const groupedIntegrations = useMemo(() => {
+    return groups.map((group) => ({
+      group,
+      integrations: integrations.filter((item) => item.groupId === group.id),
+    }));
+  }, [groups, integrations]);
+
+  const groupedByCompany = (companyId: string) =>
+    groupedIntegrations.filter((item) => item.group.companyId === companyId);
+
+  useEffect(() => {
+    let active = true;
+    setIsLoading(true);
+    getCompanies()
+      .then((data) => {
+        if (!active) return;
+        setCompanies(data);
+        if (data.length > 0) {
+          setSelectedCompanyId((current) => current || data[0].id);
+        }
+      })
+      .catch(() => {
+        if (!active) return;
+        setError(t("integrationCompaniesError"));
+      })
+      .finally(() => {
+        if (!active) return;
+        setIsLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, [t]);
+
+  useEffect(() => {
+    if (!selectedCompanyId) {
+      return;
+    }
+    let active = true;
+    setIsLoading(true);
+    
+    // Fetch overview and auth profiles in parallel
+    Promise.all([
+        getIntegrationOverview(selectedCompanyId),
+        getAuthProfiles(selectedCompanyId)
+    ])
+      .then(([overviewData, profilesData]) => {
+        if (!active) return;
+        setGroups(overviewData.groups);
+        setIntegrations(
+          overviewData.integrations.map((item) => ({
+            id: item.id,
+            groupId: item.groupId,
+            companyId: item.companyId,
+            type: item.type as IntegrationType,
+            name: item.name,
+            description: item.description ?? undefined,
+            status: item.status as IntegrationItem["status"],
+            createdAt: item.createdAt,
+            config: parseConfig(item.configJson),
+          }))
+        );
+        setAuthProfiles(profilesData.filter(p => p.isActive && p.providerType === "AzureAd"));
+      })
+      .catch(() => {
+        if (!active) return;
+        setError(t("integrationOverviewError"));
+      })
+      .finally(() => {
+        if (!active) return;
+        setIsLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, [selectedCompanyId, t]);
+
+  useEffect(() => {
+    if (!wizardOpen) {
+      return;
+    }
+    if (groupsForCompany.length === 0) {
+      setUseNewGroup(true);
+      setSelectedGroupId("");
+    }
+  }, [groupsForCompany.length, wizardOpen]);
+
+  useEffect(() => {
+    if (!wizardOpen) {
+      return;
+    }
+    setSelectedGroupId("");
+    if (groupsForCompany.length === 0) {
+      setUseNewGroup(true);
+    }
+  }, [selectedCompanyId, wizardOpen, groupsForCompany.length]);
+
+  const resetWizard = () => {
+    setWizardStep("company");
+    setError("");
+    setUseNewGroup(groupsForCompany.length === 0);
+    setSelectedGroupId("");
+    setNewGroupName("");
+    setSelectedType(null);
+    setIntegrationName("");
+    setIntegrationDescription("");
+    setBaseUrl("");
+    setAuthType("cookie");
+    setTenantId("");
+    setClientId("");
+    setClientSecret("");
+    setShowSecret(false);
+    setSubscriptionId("");
+    setResourceGroup("");
+    setFactoryName("");
+    setTokenValue("");
+    setAuthProfileId("");
+  };
+
+  const handleOpenWizard = () => {
+    if (companies.length === 0) {
+      setError(t("integrationNoCompanies"));
+      return;
+    }
+    resetWizard();
+    setWizardOpen(true);
+  };
+
+  const handleCloseWizard = () => {
+    setWizardOpen(false);
+    setError("");
+  };
+
+  const requireStep = (nextStep: WizardStep) => {
+    if (wizardStep === "company") {
+      if (!selectedCompanyId) {
+        setError(t("integrationCompanyRequired"));
+        return;
+      }
+    }
+    if (wizardStep === "group") {
+      if (useNewGroup && !newGroupName.trim()) {
+        setError(t("integrationGroupRequired"));
+        return;
+      }
+      if (!useNewGroup && !selectedGroupId) {
+        setError(t("integrationGroupRequired"));
+        return;
+      }
+    }
+    if (wizardStep === "type") {
+      if (!selectedType) {
+        setError(t("integrationTypeRequired"));
+        return;
+      }
+    }
+    if (wizardStep === "config") {
+      if (!integrationName.trim()) {
+        setError(t("integrationNameRequired"));
+        return;
+      }
+      if (selectedType !== "adf" && !baseUrl.trim()) {
+        setError(t("integrationBaseUrlRequired"));
+        return;
+      }
+      if (selectedType === "adf" && (!subscriptionId.trim() || !resourceGroup.trim() || !factoryName.trim())) {
+        setError(t("integrationAdfRequired"));
+        return;
+      }
+    }
+    setError("");
+    setWizardStep(nextStep);
+  };
+
+  const handleSave = () => {
+    if (!selectedType) {
+      setError(t("integrationTypeRequired"));
+      return;
+    }
+
+    let groupId = selectedGroupId;
+    const config = {
+      type: selectedType,
+      name: integrationName.trim(),
+      description: integrationDescription.trim() || undefined,
+      baseUrl: baseUrl.trim() || undefined,
+      authType,
+      tenantId: tenantId.trim() || undefined,
+      clientId: clientId.trim() || undefined,
+      clientSecret: clientSecret.trim() || undefined,
+      subscriptionId: subscriptionId.trim() || undefined,
+      resourceGroup: resourceGroup.trim() || undefined,
+      factoryName: factoryName.trim() || undefined,
+      token: tokenValue.trim() || undefined,
+      authProfileId: authType === "company-profile" ? authProfileId : undefined,
+    };
+
+    const save = async () => {
+      let resolvedGroupId = groupId;
+      if (useNewGroup) {
+        const createdGroup = await createIntegrationGroup({
+          companyId: selectedCompanyId,
+          name: newGroupName.trim(),
+        });
+        resolvedGroupId = createdGroup.id;
+      }
+
+      if (!resolvedGroupId) {
+        setError(t("integrationGroupRequired"));
+        return;
+      }
+
+      await createIntegration({
+        companyId: selectedCompanyId,
+        groupId: resolvedGroupId,
+        type: selectedType,
+        name: integrationName.trim(),
+        description: integrationDescription.trim() || undefined,
+        configJson: JSON.stringify(config),
+      });
+
+      const overview = await getIntegrationOverview(selectedCompanyId);
+      setGroups(overview.groups);
+      setIntegrations(
+        overview.integrations.map((item) => ({
+          id: item.id,
+          groupId: item.groupId,
+          companyId: item.companyId,
+          type: item.type as IntegrationType,
+          name: item.name,
+          description: item.description ?? undefined,
+          status: item.status as IntegrationItem["status"],
+          createdAt: item.createdAt,
+            config: parseConfig(item.configJson),
+        }))
+      );
+    };
+
+    save()
+      .then(() => {
+        showToast(t("integrationSaved"), { title: t("integrations"), variant: "success" });
+        setWizardOpen(false);
+      })
+      .catch(() => {
+        setError(t("integrationSaveError"));
+      });
+  };
+
+  const handleRemove = (item: IntegrationItem) => {
+    deleteIntegration(item.id)
+      .then(async () => {
+        const overview = await getIntegrationOverview(selectedCompanyId);
+        setGroups(overview.groups);
+        setIntegrations(
+          overview.integrations.map((row) => ({
+            id: row.id,
+            groupId: row.groupId,
+            companyId: row.companyId,
+            type: row.type as IntegrationType,
+            name: row.name,
+            description: row.description ?? undefined,
+            status: row.status as IntegrationItem["status"],
+            createdAt: row.createdAt,
+            config: parseConfig(row.configJson),
+          }))
+        );
+        showToast(t("integrationRemoved"), { title: t("integrations"), variant: "info" });
+      })
+      .catch(() => {
+        setError(t("integrationRemoveError"));
+      });
+  };
+
+  return (
+    <div className="mx-auto flex w-full max-w-6xl flex-col gap-6">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <p className="text-xs uppercase tracking-[0.35em] text-slate-400">{t("integrationsEyebrow")}</p>
+          <h1 className="text-3xl font-semibold text-foreground">{t("integrationsTitle")}</h1>
+          <p className="text-sm text-muted-foreground">{t("integrationsSubtitle")}</p>
+        </div>
+        <Button className="gap-2" onClick={handleOpenWizard}>
+          <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24">
+            <path d="M12 5v14M5 12h14" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+          </svg>
+          {t("integrationAdd")}
+        </Button>
+      </div>
+      {error && !wizardOpen ? (
+        <div className="rounded-lg border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+          {error}
+        </div>
+      ) : null}
+
+      <div className="grid gap-4 lg:grid-cols-[1.2fr_0.8fr]">
+        <div className="space-y-4">
+          {isLoading ? (
+            <Card>
+              <CardContent className="py-6 text-sm text-muted-foreground">{t("loading")}</CardContent>
+            </Card>
+          ) : null}
+          {!isLoading && companies.length === 0 ? (
+            <Card>
+              <CardContent className="py-6 text-sm text-muted-foreground">
+                {t("integrationNoCompanies")}
+              </CardContent>
+            </Card>
+          ) : null}
+          {companies.map((company) => (
+            <Card key={company.id}>
+              <CardHeader>
+                <CardTitle className="flex items-center justify-between text-base">
+                  <span className="flex items-center gap-2">
+                    <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-blue-100 text-blue-700 dark:bg-blue-500/20 dark:text-blue-200">
+                      <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24">
+                        <path d="M4 8h16M4 12h16M4 16h10" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                      </svg>
+                    </span>
+                    {company.name}
+                  </span>
+                  <span className="text-xs text-muted-foreground">
+                    {integrations.filter((item) => item.companyId === company.id).length} {t("integrationCount")}
+                  </span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {groupedByCompany(company.id).map((groupItem) => (
+                    <div key={groupItem.group.id} className="rounded-lg border border-border/60 px-4 py-3">
+                      <div className="flex items-center justify-between gap-2">
+                        <div>
+                          <p className="text-sm font-semibold text-foreground">{groupItem.group.name}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {groupItem.integrations.length} {t("integrationsInGroup")}
+                          </p>
+                        </div>
+                        <span className="inline-flex items-center rounded-full border border-emerald-200/70 bg-emerald-50/80 px-2 py-0.5 text-[10px] uppercase text-emerald-700 dark:border-emerald-500/40 dark:bg-emerald-500/20 dark:text-emerald-200">
+                          {t("integrationGroup")}
+                        </span>
+                      </div>
+                      <div className="mt-3 grid gap-2">
+                        {groupItem.integrations.length === 0 ? (
+                          <div className="rounded-md border border-dashed border-border/60 bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
+                            {t("integrationEmptyGroup")}
+                          </div>
+                        ) : (
+                          groupItem.integrations.map((integration) => (
+                            <div
+                              key={integration.id}
+                              className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-border/50 bg-white/60 px-3 py-2 text-xs text-muted-foreground dark:bg-slate-900/40"
+                            >
+                              <div className="flex items-center gap-2">
+                                <span className="inline-flex h-7 w-7 items-center justify-center rounded-lg bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-200">
+                                  {integrationTypes.find((item) => item.id === integration.type)?.icon}
+                                </span>
+                                <div>
+                                  <p className="text-sm font-semibold text-foreground">{integration.name}</p>
+                                  <p className="text-[11px] text-muted-foreground">
+                                    {t(`integrationType_${integration.type}`)}
+                                  </p>
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <span className="inline-flex items-center rounded-full border border-blue-200/70 bg-blue-50/80 px-2 py-0.5 text-[10px] uppercase text-blue-700 dark:border-blue-500/40 dark:bg-blue-500/20 dark:text-blue-200">
+                                  {t(`integrationStatus_${integration.status}`)}
+                                </span>
+                                <Button size="sm" variant="outline" onClick={() => handleRemove(integration)}>
+                                  {t("integrationRemove")}
+                                </Button>
+                              </div>
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                {groupedByCompany(company.id).length === 0 ? (
+                  <div className="rounded-lg border border-dashed border-border/60 bg-muted/40 px-4 py-3 text-sm text-muted-foreground">
+                    {t("integrationEmptyCompany")}
+                  </div>
+                ) : null}
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+
+        <Card className="h-fit">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-base">
+              <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-200">
+                <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24">
+                  <path d="M6 5h12M6 12h12M6 19h8" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                </svg>
+              </span>
+              {t("integrationWizardTitle")}
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {!wizardOpen ? (
+              <div className="rounded-lg border border-dashed border-border/60 bg-muted/40 px-3 py-3 text-sm text-muted-foreground">
+                <p className="font-semibold text-foreground">{t("integrationWizardHintTitle")}</p>
+                <p className="mt-1">{t("integrationWizardHintBody")}</p>
+                <Button size="sm" className="mt-3" onClick={handleOpenWizard}>
+                  {t("integrationAdd")}
+                </Button>
+              </div>
+            ) : (
+              <>
+                {error ? (
+                  <div className="rounded-lg border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs text-destructive">
+                    {error}
+                  </div>
+                ) : null}
+
+                <div className="flex flex-wrap gap-2 text-xs">
+                  {(["company", "group", "type", "config"] as WizardStep[]).map((step) => (
+                    <span
+                      key={step}
+                      className={`rounded-full border px-2 py-0.5 ${
+                        step === wizardStep
+                          ? "border-emerald-300 bg-emerald-50 text-emerald-700 dark:border-emerald-500/40 dark:bg-emerald-500/20 dark:text-emerald-200"
+                          : "border-border/60 bg-muted/40 text-muted-foreground"
+                      }`}
+                    >
+                      {t(`integrationStep_${step}`)}
+                    </span>
+                  ))}
+                </div>
+
+                {wizardStep === "company" ? (
+                  <div className="space-y-3">
+                    <label className="space-y-2 text-sm">
+                      <span className="text-muted-foreground">{t("integrationCompany")}</span>
+                      <select
+                        className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground dark:bg-slate-950/60 dark:text-slate-100"
+                        value={selectedCompanyId}
+                        onChange={(event) => setSelectedCompanyId(event.target.value)}
+                      >
+                        {companies.map((company) => (
+                          <option key={company.id} value={company.id}>
+                            {company.name}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                  </div>
+                ) : null}
+
+                {wizardStep === "group" ? (
+                  <div className="space-y-3">
+                    <label className="flex items-center gap-2 text-xs text-muted-foreground">
+                      <input
+                        type="checkbox"
+                        checked={useNewGroup}
+                        onChange={(event) => setUseNewGroup(event.target.checked)}
+                      />
+                      {t("integrationNewGroup")}
+                    </label>
+                    {useNewGroup ? (
+                      <label className="space-y-2 text-sm">
+                        <span className="text-muted-foreground">{t("integrationGroupName")}</span>
+                        <input
+                          className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground dark:bg-slate-950/60 dark:text-slate-100"
+                          value={newGroupName}
+                          onChange={(event) => setNewGroupName(event.target.value)}
+                          placeholder={t("integrationGroupPlaceholder")}
+                        />
+                      </label>
+                    ) : (
+                      <div className="space-y-2">
+                        {groupsForCompany.length === 0 ? (
+                          <div className="rounded-md border border-dashed border-border/60 bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
+                            {t("integrationNoGroups")}
+                          </div>
+                        ) : (
+                          groupsForCompany.map((group) => (
+                            <label key={group.id} className="flex items-center gap-2 text-sm">
+                              <input
+                                type="radio"
+                                checked={selectedGroupId === group.id}
+                                onChange={() => setSelectedGroupId(group.id)}
+                              />
+                              {group.name}
+                            </label>
+                          ))
+                        )}
+                      </div>
+                    )}
+                  </div>
+                ) : null}
+
+                {wizardStep === "type" ? (
+                  <div className="grid gap-2">
+                    {integrationTypes.map((item) => (
+                      <button
+                        key={item.id}
+                        type="button"
+                        onClick={() => setSelectedType(item.id)}
+                        className={`flex items-center gap-3 rounded-lg border px-3 py-2 text-left text-sm ${
+                          selectedType === item.id
+                            ? "border-emerald-400/70 bg-emerald-50 text-emerald-700 dark:border-emerald-500/40 dark:bg-emerald-500/20 dark:text-emerald-200"
+                            : "border-border/60 bg-muted/40 text-muted-foreground"
+                        }`}
+                      >
+                        <span className="inline-flex h-7 w-7 items-center justify-center rounded-lg bg-white/80 text-slate-700 dark:bg-slate-800 dark:text-slate-200">
+                          {item.icon}
+                        </span>
+                        <div>
+                          <p className="font-semibold text-foreground">{t(`integrationType_${item.id}`)}</p>
+                          <p className="text-xs text-muted-foreground">{t(`integrationTypeDesc_${item.id}`)}</p>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                ) : null}
+
+                {wizardStep === "config" && selectedType ? (
+                  <div className="space-y-3">
+                    <label className="space-y-2 text-sm">
+                      <span className="text-muted-foreground">{t("integrationName")}</span>
+                      <input
+                        className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground dark:bg-slate-950/60 dark:text-slate-100"
+                        value={integrationName}
+                        onChange={(event) => setIntegrationName(event.target.value)}
+                        placeholder={t("integrationNamePlaceholder")}
+                      />
+                    </label>
+                    <label className="space-y-2 text-sm">
+                      <span className="text-muted-foreground">{t("integrationDescription")}</span>
+                      <input
+                        className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground dark:bg-slate-950/60 dark:text-slate-100"
+                        value={integrationDescription}
+                        onChange={(event) => setIntegrationDescription(event.target.value)}
+                        placeholder={t("integrationDescriptionPlaceholder")}
+                      />
+                    </label>
+
+                    {selectedType === "airflow" || selectedType === "api" ? (
+                      <>
+                        <label className="space-y-2 text-sm">
+                          <span className="text-muted-foreground">{t("integrationBaseUrl")}</span>
+                          <input
+                            className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground dark:bg-slate-950/60 dark:text-slate-100"
+                            value={baseUrl}
+                            onChange={(event) => setBaseUrl(event.target.value)}
+                            placeholder={t("integrationBaseUrlPlaceholder")}
+                          />
+                        </label>
+                        <label className="space-y-2 text-sm">
+                          <span className="text-muted-foreground">{t("integrationAuthType")}</span>
+                          <select
+                            className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground dark:bg-slate-950/60 dark:text-slate-100"
+                            value={authType}
+                            onChange={(event) => setAuthType(event.target.value)}
+                          >
+                            <option value="cookie">{t("integrationAuthCookie")}</option>
+                            <option value="basic">{t("integrationAuthBasic")}</option>
+                            <option value="bearer">{t("integrationAuthBearer")}</option>
+                          </select>
+                        </label>
+                        {selectedType === "api" ? (
+                          <label className="space-y-2 text-sm">
+                            <span className="text-muted-foreground">{t("integrationToken")}</span>
+                            <input
+                              className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground dark:bg-slate-950/60 dark:text-slate-100"
+                              type={showSecret ? "text" : "password"}
+                              value={tokenValue}
+                              onChange={(event) => setTokenValue(event.target.value)}
+                            />
+                            <label className="flex items-center gap-2 text-xs text-muted-foreground">
+                              <input
+                                type="checkbox"
+                                checked={showSecret}
+                                onChange={(event) => setShowSecret(event.target.checked)}
+                              />
+                              {t("showPassword")}
+                            </label>
+                          </label>
+                        ) : null}
+                      </>
+                    ) : null}
+
+                    {selectedType === "adf" ? (
+                      <>
+                        <label className="space-y-2 text-sm">
+                          <span className="text-muted-foreground">{t("integrationSubscription")}</span>
+                          <input
+                            className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground dark:bg-slate-950/60 dark:text-slate-100"
+                            value={subscriptionId}
+                            onChange={(event) => setSubscriptionId(event.target.value)}
+                          />
+                        </label>
+                        <label className="space-y-2 text-sm">
+                          <span className="text-muted-foreground">{t("integrationResourceGroup")}</span>
+                          <input
+                            className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground dark:bg-slate-950/60 dark:text-slate-100"
+                            value={resourceGroup}
+                            onChange={(event) => setResourceGroup(event.target.value)}
+                          />
+                        </label>
+                        <label className="space-y-2 text-sm">
+                          <span className="text-muted-foreground">{t("integrationFactory")}</span>
+                          <input
+                            className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground dark:bg-slate-950/60 dark:text-slate-100"
+                            value={factoryName}
+                            onChange={(event) => setFactoryName(event.target.value)}
+                          />
+                        </label>
+                        <label className="space-y-2 text-sm">
+                          <span className="text-muted-foreground">{t("integrationAuthType")}</span>
+                          <select
+                            className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground dark:bg-slate-950/60 dark:text-slate-100"
+                            value={authType}
+                            onChange={(event) => setAuthType(event.target.value)}
+                          >
+                            <option value="service-principal">{t("integrationAuthSpn")}</option>
+                            <option value="managed-identity">{t("integrationAuthMsi")}</option>
+                            <option value="company-profile">Use Company Auth Profile (Azure AD)</option>
+                          </select>
+                        </label>
+                        {authType === "company-profile" ? (
+                            <label className="space-y-2 text-sm">
+                              <span className="text-muted-foreground">Select Profile</span>
+                              <select
+                                className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground dark:bg-slate-950/60 dark:text-slate-100"
+                                value={authProfileId}
+                                onChange={(event) => setAuthProfileId(event.target.value)}
+                              >
+                                <option value="">Select a profile...</option>
+                                {authProfiles.map(p => (
+                                    <option key={p.id} value={p.id}>{p.name}</option>
+                                ))}
+                              </select>
+                              {authProfiles.length === 0 && (
+                                  <p className="text-xs text-amber-600">No Azure AD profiles configured for this company.</p>
+                              )}
+                            </label>
+                        ) : null}
+                        {authType === "service-principal" ? (
+                          <>
+                            <label className="space-y-2 text-sm">
+                              <span className="text-muted-foreground">{t("integrationTenantId")}</span>
+                              <input
+                                className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground dark:bg-slate-950/60 dark:text-slate-100"
+                                value={tenantId}
+                                onChange={(event) => setTenantId(event.target.value)}
+                              />
+                            </label>
+                            <label className="space-y-2 text-sm">
+                              <span className="text-muted-foreground">{t("integrationClientId")}</span>
+                              <input
+                                className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground dark:bg-slate-950/60 dark:text-slate-100"
+                                value={clientId}
+                                onChange={(event) => setClientId(event.target.value)}
+                              />
+                            </label>
+                            <label className="space-y-2 text-sm">
+                              <span className="text-muted-foreground">{t("integrationClientSecret")}</span>
+                              <input
+                                className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground dark:bg-slate-950/60 dark:text-slate-100"
+                                type={showSecret ? "text" : "password"}
+                                value={clientSecret}
+                                onChange={(event) => setClientSecret(event.target.value)}
+                              />
+                              <label className="flex items-center gap-2 text-xs text-muted-foreground">
+                                <input
+                                  type="checkbox"
+                                  checked={showSecret}
+                                  onChange={(event) => setShowSecret(event.target.checked)}
+                                />
+                                {t("showPassword")}
+                              </label>
+                            </label>
+                          </>
+                        ) : null}
+                      </>
+                    ) : null}
+                  </div>
+                ) : null}
+
+                <div className="flex items-center justify-between pt-2">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => {
+                      if (wizardStep === "company") {
+                        handleCloseWizard();
+                        return;
+                      }
+                      const steps: WizardStep[] = ["company", "group", "type", "config"];
+                      const index = steps.indexOf(wizardStep);
+                      setWizardStep(steps[Math.max(0, index - 1)]);
+                    }}
+                  >
+                    {wizardStep === "company" ? t("integrationCancel") : t("back")}
+                  </Button>
+                  {wizardStep === "config" ? (
+                    <Button size="sm" onClick={handleSave}>
+                      {t("integrationSave")}
+                    </Button>
+                  ) : (
+                    <Button
+                      size="sm"
+                      onClick={() => {
+                        const steps: WizardStep[] = ["company", "group", "type", "config"];
+                        const index = steps.indexOf(wizardStep);
+                        requireStep(steps[index + 1] ?? "config");
+                      }}
+                    >
+                      {t("continue")}
+                    </Button>
+                  )}
+                </div>
+              </>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  );
+}

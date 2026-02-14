@@ -1,0 +1,6 @@
+@Puod.Services.Studio_HostAddress = http://localhost:5064
+
+GET {{Puod.Services.Studio_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

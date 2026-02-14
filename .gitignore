@@ -1,0 +1,295 @@
+# ============================================
+# PUOD - .gitignore
+# Stack: .NET 8/9 + React/Vite + Docker + PostgreSQL
+# ============================================
+
+# ==========================================
+# .NET / C#
+# ==========================================
+
+# Build results
+[Dd]ebug/
+[Dd]ebugPublic/
+[Rr]elease/
+[Rr]eleases/
+x64/
+x86/
+[Aa][Rr][Mm]/
+[Aa][Rr][Mm]64/
+bld/
+[Bb]in/
+[Oo]bj/
+[Ll]og/
+[Ll]ogs/
+artifacts/
+
+# NuGet
+*.nupkg
+*.snupkg
+**/packages/*
+!**/packages/build/
+*.nuget.props
+*.nuget.targets
+project.lock.json
+project.fragment.lock.json
+nupkg/
+
+# Visual Studio
+.vs/
+*.vsidx
+*.vsconfig
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+*.vspscc
+*.vssscc
+.builds
+*.pidb
+*.svclog
+*.scc
+
+# Visual Studio files built
+*_i.c
+*_p.c
+*_h.h
+*.ilk
+*.meta
+*.obj
+*.iobj
+*.pch
+*.pdb
+*.ipdb
+*.pgc
+*.pgd
+*.rsp
+*.sbr
+*.tlb
+*.tli
+*.tlh
+*.tmp_proj
+*_wpftmp.csproj
+*.tlog
+
+# Rider / JetBrains
+.idea/
+*.sln.iml
+
+# Entity Framework Migrations (mantemos no controle de versao)
+# Nao ignorar Migrations/ - elas sao importantes para o projeto
+
+# StyleCop
+StyleCopReport.xml
+
+# .NET publish output
+publish/
+PublishOutput/
+
+# .NET user secrets
+# https://learn.microsoft.com/aspnet/core/security/app-secrets
+# Nao rastreie o ID de user-secrets
+secret.json
+
+# ==========================================
+# Node.js / React / Vite (Frontend)
+# ==========================================
+
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+.pnpm-store/
+.yarn/
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/sdks
+!.yarn/versions
+
+# Vite build output
+dist/
+dist-ssr/
+*.local
+
+# Vite cache
+.vite/
+
+# TypeScript cache
+*.tsbuildinfo
+
+# ESLint cache
+.eslintcache
+
+# Prettier cache
+.prettiercache
+
+# ==========================================
+# Environment / Secrets / Credentials
+# ==========================================
+
+.env
+.env.*
+!.env.example
+!.env.template
+
+# .NET appsettings sensíveis
+appsettings.Development.json
+appsettings.Production.json
+appsettings.Staging.json
+appsettings.Local.json
+
+# Certificados e chaves
+*.pem
+*.key
+*.crt
+*.pfx
+*.p12
+secrets/
+
+# ==========================================
+# Docker
+# ==========================================
+
+docker-compose.override.yml
+docker-compose.local.yml
+.docker/
+
+# Dados persistidos localmente (volumes)
+docker/postgres/data/
+docker/rabbitmq/data/
+docker/redis/data/
+
+# ==========================================
+# Databases
+# ==========================================
+
+*.db
+*.sqlite
+*.sqlite3
+*.mdf
+*.ldf
+*.bak
+
+# ==========================================
+# Backups
+# ==========================================
+
+backups/
+
+# ==========================================
+# OS Files
+# ==========================================
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+
+# Windows
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
+Desktop.ini
+$RECYCLE.BIN/
+*.cab
+*.msi
+*.msix
+*.msm
+*.msp
+*.lnk
+NUL
+
+# Linux
+*~
+*.swp
+*.swo
+
+# ==========================================
+# IDEs / Editors
+# ==========================================
+
+# VS Code - manter configuracoes compartilhadas
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+
+# Sublime Text
+*.sublime-project
+*.sublime-workspace
+
+# ==========================================
+# Test & Coverage
+# ==========================================
+
+coverage/
+*.coverage
+*.coveragexml
+coveragereport/
+TestResults/
+*.trx
+
+# ==========================================
+# Logs
+# ==========================================
+
+logs/
+*.log
+
+# ==========================================
+# Temporary Files
+# ==========================================
+
+*.tmp
+*.temp
+*.cache
+tmp/
+temp/
+
+# ==========================================
+# Imagens e Binarios desnecessarios na raiz
+# ==========================================
+
+# Screenshots e imagens temporarias da raiz
+/*.png
+/*.jpg
+/*.jpeg
+/*.gif
+/*.bmp
+
+# Executáveis e instaladores
+*.exe
+*.msi
+*.dll
+*.so
+*.dylib
+
+# ==========================================
+# Reports / Exports
+# ==========================================
+
+reports/
+*.xlsx
+*.csv
+
+# ==========================================
+# Claude Code / AI
+# ==========================================
+
+.claude/
+
+# ==========================================
+# Misc
+# ==========================================
+
+# HTTP test files com credenciais
+test-requests.http
+
+# PowerShell / Shell scripts de reset (podem conter dados sensíveis)
+# Manter start-local.* mas ignorar reset scripts
+reset-*.ps1
+reset-*.sh
