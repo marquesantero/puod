@@ -17,18 +17,18 @@ export default defineConfig(({ mode }) => {
     },
     server: {
       proxy: {
-        // Studio Service endpoints - must be before general /api rule
-        "/api/studio": {
+        // Studio Service endpoints (versioned) - must be before general /api rule
+        "/api/v1/studio": {
           target: studioTarget,
           changeOrigin: true,
         },
-        // Integration Service endpoints - must be before general /api rule
-        "/api/integration": {
+        // Integration Service endpoints (versioned) - must be before general /api rule
+        "/api/v1/integration": {
           target: integrationTarget,
           changeOrigin: true,
         },
-        // User Service and all other endpoints
-        "/api": {
+        // User Service and all other versioned endpoints
+        "/api/v1": {
           target: apiTarget,
           changeOrigin: true,
         },

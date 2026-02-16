@@ -1,5 +1,6 @@
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Logging;
 using Puod.Services.Integration.Connectors;
 using Puod.Services.Integration.Data;
@@ -31,12 +32,20 @@ public class IntegrationService : IIntegrationService
 {
     private readonly IntegrationDbContext _context;
     private readonly IConnectorFactory _connectorFactory;
+    private readonly IDistributedCache _cache;
     private readonly ILogger<IntegrationService> _logger;
 
-    public IntegrationService(IntegrationDbContext context, IConnectorFactory connectorFactory, ILogger<IntegrationService> logger)
+    private static readonly DistributedCacheEntryOptions CacheOptions = new()
+    {
+        AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(5),
+        SlidingExpiration = TimeSpan.FromMinutes(2)
+    };
+
+    public IntegrationService(IntegrationDbContext context, IConnectorFactory connectorFactory, IDistributedCache cache, ILogger<IntegrationService> logger)
     {
         _context = context;
         _connectorFactory = connectorFactory;
+        _cache = cache;
         _logger = logger;
     }
 
@@ -434,10 +443,19 @@ public class IntegrationService : IIntegrationService
             _logger.LogInformation($"[ListDatabasesAsync] No search, limiting to max_dags={config["max_dags"]}");
         }
 
+        var cacheKey = $"databases:{integrationId}:{search ?? "all"}:{limit ?? 0}";
+        var cached = await _cache.GetStringAsync(cacheKey);
+        if (cached != null)
+        {
+            _logger.LogInformation("[ListDatabasesAsync] Cache hit for key {CacheKey}", cacheKey);
+            return JsonSerializer.Deserialize<List<string>>(cached) ?? [];
+        }
+
         var connector = _connectorFactory.CreateConnector(integration.Type);
         var results = await connector.ListDatabasesAsync(config);
-        _logger.LogInformation($"[ListDatabasesAsync] Received {results.Count} results from connector");
+        _logger.LogInformation("[ListDatabasesAsync] Received {Count} results from connector", results.Count);
 
+        await _cache.SetStringAsync(cacheKey, JsonSerializer.Serialize(results), CacheOptions);
         return results;
     }
 
@@ -464,8 +482,19 @@ public class IntegrationService : IIntegrationService
             // In production, should verify user's company belongs to this client
         }
 
+        var cacheKey = $"tables:{integrationId}:{database}";
+        var cached = await _cache.GetStringAsync(cacheKey);
+        if (cached != null)
+        {
+            _logger.LogInformation("[ListTablesAsync] Cache hit for key {CacheKey}", cacheKey);
+            return JsonSerializer.Deserialize<List<string>>(cached) ?? [];
+        }
+
         var connector = _connectorFactory.CreateConnector(integration.Type);
-        return await connector.ListTablesAsync(database, DeserializeConfig(integration.ConfigJson));
+        var results = await connector.ListTablesAsync(database, DeserializeConfig(integration.ConfigJson));
+
+        await _cache.SetStringAsync(cacheKey, JsonSerializer.Serialize(results), CacheOptions);
+        return results;
     }
 
     private static IntegrationDto MapToDto(Models.Integration integration) => new(

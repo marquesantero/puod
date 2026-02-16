@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 const apiClient = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL || '/api',
+  baseURL: import.meta.env.VITE_API_BASE_URL || '/api/v1',
 });
 
 // Helper to check if token is expired
@@ -51,7 +51,7 @@ apiClient.interceptors.response.use(
         try {
           console.log('[API Client] Attempting to refresh token...');
           const response = await axios.post(
-            `${import.meta.env.VITE_API_BASE_URL || '/api'}/auth/refresh`,
+            `${import.meta.env.VITE_API_BASE_URL || '/api/v1'}/auth/refresh`,
             { refreshToken }
           );
           const { accessToken, refreshToken: newRefreshToken } = response.data;

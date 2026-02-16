@@ -1,6 +1,7 @@
 using System.Text;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
+using Puod.Gateway.Middleware;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -34,6 +35,20 @@ builder.Services.AddAuthorization(options =>
         policy.RequireAuthenticatedUser();
     });
 });
+
+var redisConnection = builder.Configuration.GetConnectionString("Redis");
+if (!string.IsNullOrWhiteSpace(redisConnection))
+{
+    builder.Services.AddStackExchangeRedisCache(options =>
+    {
+        options.Configuration = redisConnection;
+        options.InstanceName = "puod-gateway:";
+    });
+}
+else
+{
+    builder.Services.AddDistributedMemoryCache();
+}
 
 builder.Services.AddReverseProxy()
     .LoadFromConfig(builder.Configuration.GetSection("ReverseProxy"));
@@ -91,6 +106,8 @@ if (!app.Environment.IsDevelopment())
     app.UseAuthentication();
     app.UseAuthorization();
 }
+
+app.UseMiddleware<ResponseCacheMiddleware>();
 
 app.MapReverseProxy();
 

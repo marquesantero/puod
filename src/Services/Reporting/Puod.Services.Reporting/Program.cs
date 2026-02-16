@@ -1,5 +1,9 @@
+using System.Text;
 using Hangfire;
+using Hangfire.Dashboard;
 using Hangfire.PostgreSql;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.IdentityModel.Tokens;
 using Puod.Services.Reporting.Services;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -14,6 +18,44 @@ builder.Services.AddHangfire(config => config
 builder.Services.AddHangfireServer();
 
 builder.Services.AddScoped<IReportGenerator, ExcelReportGenerator>();
+
+var jwtSettings = builder.Configuration.GetSection("JwtSettings");
+
+builder.Services.AddAuthentication(options =>
+{
+    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+})
+.AddJwtBearer(options =>
+{
+    options.TokenValidationParameters = new TokenValidationParameters
+    {
+        ValidateIssuerSigningKey = true,
+        IssuerSigningKey = new SymmetricSecurityKey(
+            Encoding.UTF8.GetBytes(jwtSettings["Secret"] ?? throw new InvalidOperationException("JWT Secret not configured"))),
+        ValidateIssuer = true,
+        ValidIssuer = jwtSettings["Issuer"],
+        ValidateAudience = true,
+        ValidAudience = jwtSettings["Audience"],
+        ValidateLifetime = true,
+        ClockSkew = TimeSpan.Zero
+    };
+});
+
+builder.Services.AddAuthorization();
+
+builder.Services.AddApiVersioning(options =>
+{
+    options.DefaultApiVersion = new Asp.Versioning.ApiVersion(1, 0);
+    options.AssumeDefaultVersionWhenUnspecified = true;
+    options.ReportApiVersions = true;
+    options.ApiVersionReader = new Asp.Versioning.UrlSegmentApiVersionReader();
+})
+.AddApiExplorer(options =>
+{
+    options.GroupNameFormat = "'v'VVV";
+    options.SubstituteApiVersionInUrl = true;
+});
 
 builder.Services.AddControllers();
 
@@ -43,6 +85,7 @@ if (app.Environment.IsDevelopment())
 
 app.UseCors("AllowAll");
 
+app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
@@ -65,6 +108,17 @@ public class HangfireAuthorizationFilter : IDashboardAuthorizationFilter
 {
     public bool Authorize(DashboardContext context)
     {
-        return true;
+        var httpContext = context.GetHttpContext();
+
+        // In development, allow access without authentication
+        if (httpContext.RequestServices.GetRequiredService<IWebHostEnvironment>().IsDevelopment())
+        {
+            return true;
+        }
+
+        // In production, require authenticated user with admin role
+        var user = httpContext.User;
+        return user.Identity?.IsAuthenticated == true
+            && (user.IsInRole("Platform Admin") || user.IsInRole("system_admin"));
     }
 }

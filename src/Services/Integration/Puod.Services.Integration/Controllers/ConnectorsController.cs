@@ -6,7 +6,8 @@ using Puod.Services.Integration.Models;
 namespace Puod.Services.Integration.Controllers;
 
 [ApiController]
-[Route("api/integration/connectors")]
+[Route("api/v{version:apiVersion}/integration/connectors")]
+[Asp.Versioning.ApiVersion(1.0)]
 public class ConnectorsController : ControllerBase
 {
     private readonly DataConnectorFactory _factory;

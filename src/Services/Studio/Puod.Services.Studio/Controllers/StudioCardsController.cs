@@ -8,7 +8,8 @@ using Puod.Services.Studio.Services;
 namespace Puod.Services.Studio.Controllers;
 
 [ApiController]
-[Route("api/studio/cards")]
+[Route("api/v{version:apiVersion}/studio/cards")]
+[Asp.Versioning.ApiVersion(1.0)]
 [Authorize]
 public class StudioCardsController : ControllerBase
 {
@@ -72,7 +73,7 @@ public class StudioCardsController : ControllerBase
 
         var userId = GetRequiredUserId();
         var card = await _cardService.CreateCardAsync(request, userId, ct);
-        return Created($"/api/studio/cards/{card.Id}", card);
+        return Created($"/api/v1/studio/cards/{card.Id}", card);
     }
 
     [HttpPut("{id:long}")]

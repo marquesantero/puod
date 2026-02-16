@@ -8,7 +8,8 @@ using Puod.Services.Studio.Services;
 namespace Puod.Services.Studio.Controllers;
 
 [ApiController]
-[Route("api/studio/dashboards")]
+[Route("api/v{version:apiVersion}/studio/dashboards")]
+[Asp.Versioning.ApiVersion(1.0)]
 [Authorize]
 public class StudioDashboardsController : ControllerBase
 {
@@ -70,7 +71,7 @@ public class StudioDashboardsController : ControllerBase
 
         var userId = GetRequiredUserId();
         var dashboard = await _dashboardService.CreateDashboardAsync(request, userId, ct);
-        return Created($"/api/studio/dashboards/{dashboard.Id}", dashboard);
+        return Created($"/api/v1/studio/dashboards/{dashboard.Id}", dashboard);
     }
 
     [HttpPut("{id:long}")]

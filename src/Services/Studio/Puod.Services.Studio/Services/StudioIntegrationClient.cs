@@ -1,19 +1,18 @@
 using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
-using Microsoft.Extensions.Configuration;
 
 namespace Puod.Services.Studio.Services;
 
 public class StudioIntegrationClient
 {
     private readonly IHttpClientFactory _httpClientFactory;
-    private readonly IConfiguration _configuration;
+    private readonly ILogger<StudioIntegrationClient> _logger;
 
-    public StudioIntegrationClient(IHttpClientFactory httpClientFactory, IConfiguration configuration)
+    public StudioIntegrationClient(IHttpClientFactory httpClientFactory, ILogger<StudioIntegrationClient> logger)
     {
         _httpClientFactory = httpClientFactory;
-        _configuration = configuration;
+        _logger = logger;
     }
 
     public async Task<(bool Success, string? ErrorMessage, double? ExecutionTimeMs)> ExecuteQueryAsync(
@@ -22,14 +21,7 @@ public class StudioIntegrationClient
         string? bearerToken,
         CancellationToken ct)
     {
-        var baseUrl = _configuration.GetValue<string>("IntegrationServiceUrl");
-        if (string.IsNullOrWhiteSpace(baseUrl))
-        {
-            return (false, "IntegrationServiceUrl is not configured.", null);
-        }
-
-        var client = _httpClientFactory.CreateClient();
-        client.BaseAddress = new Uri(baseUrl);
+        var client = _httpClientFactory.CreateClient("IntegrationService");
 
         if (!string.IsNullOrWhiteSpace(bearerToken))
         {
@@ -44,15 +36,25 @@ public class StudioIntegrationClient
 
         using var content = new StringContent(payload, Encoding.UTF8, "application/json");
         var start = DateTime.UtcNow;
-        using var response = await client.PostAsync("/api/integration/execute-query", content, ct);
 
-        var elapsed = DateTime.UtcNow - start;
-        if (response.IsSuccessStatusCode)
+        try
         {
-            return (true, null, elapsed.TotalMilliseconds);
-        }
+            using var response = await client.PostAsync("/api/v1/integration/execute-query", content, ct);
 
-        var body = await response.Content.ReadAsStringAsync(ct);
-        return (false, $"Integration query failed: {body}", elapsed.TotalMilliseconds);
+            var elapsed = DateTime.UtcNow - start;
+            if (response.IsSuccessStatusCode)
+            {
+                return (true, null, elapsed.TotalMilliseconds);
+            }
+
+            var body = await response.Content.ReadAsStringAsync(ct);
+            return (false, $"Integration query failed: {body}", elapsed.TotalMilliseconds);
+        }
+        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException)
+        {
+            var elapsed = DateTime.UtcNow - start;
+            _logger.LogError(ex, "Integration service call failed after resilience retries");
+            return (false, $"Integration service unavailable: {ex.Message}", elapsed.TotalMilliseconds);
+        }
     }
 }

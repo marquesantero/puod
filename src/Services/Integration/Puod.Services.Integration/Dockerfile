@@ -1,7 +1,9 @@
-FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
+FROM mcr.microsoft.com/dotnet/sdk:9.0 AS build
 WORKDIR /src
 
+# Copy all dependent .csproj files for proper restore caching
 COPY ["src/Services/Integration/Puod.Services.Integration/Puod.Services.Integration.csproj", "src/Services/Integration/Puod.Services.Integration/"]
+COPY ["src/Shared/Common/Puod.Shared.Common.csproj", "src/Shared/Common/"]
 RUN dotnet restore "src/Services/Integration/Puod.Services.Integration/Puod.Services.Integration.csproj"
 
 COPY . .

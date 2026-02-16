@@ -2,6 +2,7 @@ using System.Text;
 using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Http.Resilience;
 using Microsoft.IdentityModel.Tokens;
 using Npgsql;
 using Puod.Services.Studio.Data;
@@ -43,7 +44,23 @@ builder.Services.AddAuthentication(options =>
 
 builder.Services.AddAuthorization();
 
-builder.Services.AddHttpClient();
+var integrationUrl = builder.Configuration.GetValue<string>("IntegrationServiceUrl")
+    ?? "http://localhost:5001";
+
+builder.Services.AddHttpClient("IntegrationService", client =>
+{
+    client.BaseAddress = new Uri(integrationUrl);
+    client.Timeout = TimeSpan.FromSeconds(30);
+})
+.AddStandardResilienceHandler(options =>
+{
+    options.Retry.MaxRetryAttempts = 3;
+    options.Retry.Delay = TimeSpan.FromMilliseconds(500);
+    options.CircuitBreaker.SamplingDuration = TimeSpan.FromSeconds(30);
+    options.CircuitBreaker.BreakDuration = TimeSpan.FromSeconds(15);
+    options.AttemptTimeout.Timeout = TimeSpan.FromSeconds(10);
+    options.TotalRequestTimeout.Timeout = TimeSpan.FromSeconds(30);
+});
 
 builder.Services.AddScoped<StudioAccessService>();
 builder.Services.AddScoped<StudioCardService>();
@@ -51,6 +68,19 @@ builder.Services.AddScoped<StudioDashboardService>();
 builder.Services.AddScoped<StudioShareService>();
 builder.Services.AddScoped<StudioIntegrationClient>();
 builder.Services.AddScoped<StudioSampleSeeder>();
+
+builder.Services.AddApiVersioning(options =>
+{
+    options.DefaultApiVersion = new Asp.Versioning.ApiVersion(1, 0);
+    options.AssumeDefaultVersionWhenUnspecified = true;
+    options.ReportApiVersions = true;
+    options.ApiVersionReader = new Asp.Versioning.UrlSegmentApiVersionReader();
+})
+.AddApiExplorer(options =>
+{
+    options.GroupNameFormat = "'v'VVV";
+    options.SubstituteApiVersionInUrl = true;
+});
 
 builder.Services.AddControllers()
     .AddJsonOptions(options =>
@@ -116,6 +146,13 @@ else
     app.UseAuthorization();
     app.MapControllers();
 }
+
+app.MapGet("/health", () => new
+{
+    status = "healthy",
+    service = "studio",
+    timestamp = DateTime.UtcNow
+});
 
 using (var scope = app.Services.CreateScope())
 {

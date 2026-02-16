@@ -180,7 +180,7 @@ export function AuthProfilesTab({ companyId }: AuthProfilesTabProps) {
     }
     setTestingConnection(true);
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_URL || '/api'}/auth-profiles/test-azure`, {
+      const response = await fetch(`${import.meta.env.VITE_API_URL || '/api/v1'}/auth-profiles/test-azure`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('accessToken')}` },
         body: JSON.stringify({ tenantId: azureTenantId, clientId: azureClientId, clientSecret: azureClientSecret })

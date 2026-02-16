@@ -3,7 +3,7 @@ import http from 'http';
 const options = {
   hostname: 'puod-gateway',
   port: 8080,
-  path: '/api/studio/dashboards',
+  path: '/api/v1/studio/dashboards',
   method: 'GET',
   headers: {
     'Accept': 'application/json'

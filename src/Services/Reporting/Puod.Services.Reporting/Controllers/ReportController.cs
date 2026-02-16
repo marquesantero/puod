@@ -6,7 +6,8 @@ using Puod.Services.Reporting.Services;
 namespace Puod.Services.Reporting.Controllers;
 
 [ApiController]
-[Route("api/[controller]")]
+[Route("api/v{version:apiVersion}/[controller]")]
+[Asp.Versioning.ApiVersion(1.0)]
 public class ReportController : ControllerBase
 {
     private readonly IReportGenerator _reportGenerator;
@@ -50,7 +51,7 @@ public class ReportController : ControllerBase
         {
             jobId,
             message = "Report generation queued",
-            statusUrl = $"/api/report/status/{jobId}"
+            statusUrl = $"/api/v1/report/status/{jobId}"
         });
     }
 

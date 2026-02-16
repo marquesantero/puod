@@ -6,7 +6,8 @@ using Puod.Services.Integration.Services;
 namespace Puod.Services.Integration.Controllers;
 
 [ApiController]
-[Route("api/[controller]")]
+[Route("api/v{version:apiVersion}/[controller]")]
+[Asp.Versioning.ApiVersion(1.0)]
 public class IntegrationController : ControllerBase
 {
     private readonly IIntegrationService _integrationService;
@@ -34,7 +35,7 @@ public class IntegrationController : ControllerBase
                 return Unauthorized();
             }
             var integration = await _integrationService.CreateIntegrationAsync(profileId ?? 0, request);
-            return Created($"/api/integration/{integration.Id}", integration);
+            return Created($"/api/v1/integration/{integration.Id}", integration);
         }
         catch (InvalidOperationException ex)
         {

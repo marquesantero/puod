@@ -44,6 +44,20 @@ builder.Services.AddAuthentication(options =>
 
 builder.Services.AddAuthorization();
 
+var redisConnection = builder.Configuration.GetConnectionString("Redis");
+if (!string.IsNullOrWhiteSpace(redisConnection))
+{
+    builder.Services.AddStackExchangeRedisCache(options =>
+    {
+        options.Configuration = redisConnection;
+        options.InstanceName = "puod-integration:";
+    });
+}
+else
+{
+    builder.Services.AddDistributedMemoryCache();
+}
+
 builder.Services.AddHttpClient();
 
 builder.Services.AddScoped<DatabricksConnector>();
@@ -52,6 +66,19 @@ builder.Services.AddScoped<AirflowConnector>();
 builder.Services.AddScoped<AzureDataFactoryConnector>();
 builder.Services.AddScoped<IConnectorFactory, ConnectorFactory>();
 builder.Services.AddScoped<IIntegrationService, IntegrationService>();
+
+builder.Services.AddApiVersioning(options =>
+{
+    options.DefaultApiVersion = new Asp.Versioning.ApiVersion(1, 0);
+    options.AssumeDefaultVersionWhenUnspecified = true;
+    options.ReportApiVersions = true;
+    options.ApiVersionReader = new Asp.Versioning.UrlSegmentApiVersionReader();
+})
+.AddApiExplorer(options =>
+{
+    options.GroupNameFormat = "'v'VVV";
+    options.SubstituteApiVersionInUrl = true;
+});
 
 builder.Services.AddControllers()
     .AddJsonOptions(options =>
@@ -114,5 +141,12 @@ if (!app.Environment.IsDevelopment())
 }
 
 app.MapControllers();
+
+app.MapGet("/health", () => new
+{
+    status = "healthy",
+    service = "integration",
+    timestamp = DateTime.UtcNow
+});
 
 app.Run();

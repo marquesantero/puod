@@ -8,7 +8,8 @@ using Puod.Services.Studio.Services;
 namespace Puod.Services.Studio.Controllers;
 
 [ApiController]
-[Route("api/studio/shares")]
+[Route("api/v{version:apiVersion}/studio/shares")]
+[Asp.Versioning.ApiVersion(1.0)]
 [Authorize]
 public class StudioSharesController : ControllerBase
 {
