@@ -37,7 +37,12 @@ public enum ConnectorType
     Databricks,
     Synapse,
     Airflow,
-    AzureDataFactory
+    AzureDataFactory,
+    AwsGlue,
+    AwsStepFunctions,
+    DbtCloud,
+    Snowflake,
+    Dagster
 }
 
 public enum IntegrationStatus

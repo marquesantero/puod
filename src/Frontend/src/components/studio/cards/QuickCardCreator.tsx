@@ -9,7 +9,7 @@ import { CardTemplatesBrowser } from "./CardTemplatesBrowser";
 import { VisualQueryBuilder } from "./VisualQueryBuilder";
 import { QueryEditor } from "./QueryEditor";
 import { CardDataRenderer } from "./CardDataRenderer";
-import { createCard, testCard } from "@/lib/studioCardsApi";
+import { createStudioCard as createCard, testStudioCard as testCard } from "@/lib/studioApi";
 import { getIntegrations, type IntegrationListResponse, executeQuery } from "@/lib/biIntegrationApi";
 import { cardTemplates, fillTemplate, type CardTemplate } from "@/lib/cardTemplates";
 import { useToast } from "@/contexts/ToastContext";

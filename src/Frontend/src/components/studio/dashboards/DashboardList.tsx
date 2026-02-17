@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Plus, Edit, Trash2, Calendar, Loader2, LayoutGrid } from "lucide-react";
 import { useToast } from "@/contexts/ToastContext";
 import { useI18n } from "@/contexts/I18nContext";
-import { getDashboards, type StudioDashboardDto } from "@/lib/studioDashboardsApi";
+import { listStudioDashboards as getDashboards, type StudioDashboard as StudioDashboardDto } from "@/lib/studioApi";
 
 interface DashboardListProps {
   onNewDashboard: () => void;

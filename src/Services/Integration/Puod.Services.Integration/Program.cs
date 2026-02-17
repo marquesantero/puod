@@ -64,6 +64,11 @@ builder.Services.AddScoped<DatabricksConnector>();
 builder.Services.AddScoped<SynapseConnector>();
 builder.Services.AddScoped<AirflowConnector>();
 builder.Services.AddScoped<AzureDataFactoryConnector>();
+builder.Services.AddScoped<AwsGlueConnector>();
+builder.Services.AddScoped<AwsStepFunctionsConnector>();
+builder.Services.AddScoped<DbtCloudConnector>();
+builder.Services.AddScoped<SnowflakeConnector>();
+builder.Services.AddScoped<DagsterConnector>();
 builder.Services.AddScoped<IConnectorFactory, ConnectorFactory>();
 builder.Services.AddScoped<IIntegrationService, IntegrationService>();
 

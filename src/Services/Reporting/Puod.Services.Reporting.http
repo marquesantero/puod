@@ -1,6 +1,0 @@
-@Puod.Services.Reporting_HostAddress = http://localhost:5287
-
-GET {{Puod.Services.Reporting_HostAddress}}/weatherforecast/
-Accept: application/json
-
-###

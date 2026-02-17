@@ -1,0 +1,56 @@
+# Git
+.git
+.gitignore
+
+# IDE
+.vs/
+.vscode/
+.idea/
+*.suo
+*.user
+
+# .NET build output
+**/bin/
+**/obj/
+**/publish/
+**/artifacts/
+
+# Node
+**/node_modules/
+**/dist/
+**/dist-ssr/
+
+# Docker (avoid recursive context)
+**/Dockerfile*
+docker-compose*.yml
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs and temp
+**/*.log
+**/logs/
+**/*.tmp
+
+# Images/screenshots at root
+/*.png
+/*.jpg
+/*.jpeg
+/*.gif
+/*.bmp
+/*.exe
+
+# Claude / AI
+.claude/
+
+# Backups
+backups/
+
+# Documentation images
+*.puod.jpg
+*.puod.png
+
+# Environment files (secrets)
+.env
+.env.*

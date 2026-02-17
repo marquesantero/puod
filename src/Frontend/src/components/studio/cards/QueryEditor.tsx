@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Play, Check, X, AlertCircle } from "lucide-react";
-import { testCard, type StudioCardTestResult } from "@/lib/studioCardsApi";
+import { testStudioCard as testCard, type StudioCardTestResult } from "@/lib/studioApi";
 
 interface QueryEditorProps {
   query?: string;
