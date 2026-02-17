@@ -15,7 +15,8 @@ public record IdentityUserResult(
     string DisplayName,
     IdentitySource Source,
     bool IsImported     // Se já existe na tabela Users local
-) {
+)
+{
     public long? ClientId { get; init; }
     public long? ProfileId { get; init; }
     public bool IsActive { get; init; }
@@ -28,7 +29,8 @@ public record IdentityGroupResult(
     string Name,
     IdentitySource Source,
     bool IsImported
-) {
+)
+{
     public long ProfileId { get; init; }
 }
 
@@ -64,7 +66,8 @@ public record ImportUserRequest(
     string Username,
     string DisplayName,
     IdentitySource Source
-) {
+)
+{
     // For client-level imports: list of companies this user should be available to
     public List<long>? CompanyIds { get; init; }
     // Whether this is a client-level import (true) or company-level (false)
@@ -81,7 +84,8 @@ public record ImportGroupRequest(
 public record UserRoleAssignmentRequest(
     long ProfileId,
     List<long> RoleIds
-) {
+)
+{
     // For client-level role assignment: which companies each role applies to
     public Dictionary<long, List<long>>? RoleCompanies { get; init; } // RoleId -> CompanyIds
 }
@@ -89,7 +93,8 @@ public record UserRoleAssignmentRequest(
 public record GroupRoleAssignmentRequest(
     long ProfileId,
     List<long> RoleIds
-) {
+)
+{
     // For client-level role assignment: which companies each role applies to
     public Dictionary<long, List<long>>? RoleCompanies { get; init; } // RoleId -> CompanyIds
 }
@@ -141,7 +146,8 @@ public record CreateLocalUserRequest(
     string DisplayName,
     string Password,
     string? PhotoUrl
-) {
+)
+{
     // For client-level creation: list of companies this user should be available to
     public List<long>? CompanyIds { get; init; }
     // Whether this is a client-level creation (true) or company-level (false)

@@ -200,15 +200,15 @@ public class IntegrationsController : ControllerBase
 
             using var httpClient = _httpClientFactory.CreateClient();
             httpClient.Timeout = TimeSpan.FromSeconds(10);
-            
+
             var response = await httpClient.GetAsync(baseUrl, ct);
-            
+
             integration.Status = response.IsSuccessStatusCode ? IntegrationStatus.Ready : IntegrationStatus.Error;
             await _dbContext.SaveChangesAsync(ct);
 
             return Ok(new IntegrationTestResponse(
-                response.IsSuccessStatusCode, 
-                response.IsSuccessStatusCode ? "Connection successful!" : $"Connection failed: {response.StatusCode}", 
+                response.IsSuccessStatusCode,
+                response.IsSuccessStatusCode ? "Connection successful!" : $"Connection failed: {response.StatusCode}",
                 integration.Status.ToString().ToLowerInvariant()
             ));
         }
@@ -225,7 +225,7 @@ public class IntegrationsController : ControllerBase
     {
         return new IntegrationResponse(
             integration.Id,
-            requestCompanyId, 
+            requestCompanyId,
             integration.OwnerType == OwnerType.Client,
             integration.Type.ToString().ToLowerInvariant(),
             integration.Name,

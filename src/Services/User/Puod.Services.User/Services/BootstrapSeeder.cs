@@ -47,7 +47,7 @@ public class BootstrapSeeder
         {
             _logger.LogInformation("Seeding {Count} new permissions...", permissionsToAdd.Count);
             _dbContext.Permissions.AddRange(permissionsToAdd);
-            await _dbContext.SaveChangesAsync(ct); 
+            await _dbContext.SaveChangesAsync(ct);
         }
 
         // --- 2. Ensure Platform client exists ---

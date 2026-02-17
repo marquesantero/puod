@@ -34,7 +34,7 @@ public class MonitoringDbContext : DbContext
         modelBuilder.Entity<Alert>()
             .Property(e => e.Metadata)
             .HasColumnType("jsonb");
-            
+
         modelBuilder.Entity<MetricSnapshot>()
             .Property(e => e.Tags)
             .HasColumnType("jsonb");

@@ -37,8 +37,8 @@ public class SecurityController : ControllerBase
     [HttpGet("search/users")]
     [Authorize(Policy = "Permission:Security.Users.View")]
     public async Task<ActionResult<List<IdentityUserResult>>> SearchUsers(
-        [FromQuery] string term, 
-        [FromQuery] IdentitySource source, 
+        [FromQuery] string term,
+        [FromQuery] IdentitySource source,
         [FromQuery] long? authProfileId,
         CancellationToken ct)
     {
@@ -130,7 +130,8 @@ public class SecurityController : ControllerBase
             return BadRequest("Either profileId or clientId is required.");
         }
 
-        var results = users.Select(u => {
+        var results = users.Select(u =>
+        {
             IdentitySource source;
             if (!Enum.TryParse<IdentitySource>(u.AuthProvider, true, out source))
             {
@@ -143,7 +144,8 @@ public class SecurityController : ControllerBase
                 u.Email, // TODO: Store DisplayName
                 source,
                 true
-            ) { ProfileId = profileId ?? 0, IsActive = u.IsActive };
+            )
+            { ProfileId = profileId ?? 0, IsActive = u.IsActive };
         }).ToList();
 
         return Ok(results);
@@ -186,7 +188,8 @@ public class SecurityController : ControllerBase
             user.Email,
             source,
             true
-        ) { ProfileId = user.ProfileId ?? 0, IsActive = user.IsActive });
+        )
+        { ProfileId = user.ProfileId ?? 0, IsActive = user.IsActive });
     }
 
     [HttpPut("users/{id:long}/status")]
@@ -256,9 +259,9 @@ public class SecurityController : ControllerBase
         var permissions = await _dbContext.Permissions
             .Select(p => new PermissionDto(p.Id, p.Category, p.Description))
             .ToListAsync(ct);
-        
+
         _logger.LogInformation("Returning {Count} permissions from database.", permissions.Count);
-        
+
         return Ok(permissions);
     }
 
@@ -350,7 +353,7 @@ public class SecurityController : ControllerBase
         }
 
         _dbContext.Roles.Add(role);
-        
+
         if (request.PermissionIds != null && request.PermissionIds.Any())
         {
             foreach (var permId in request.PermissionIds)
@@ -429,7 +432,7 @@ public class SecurityController : ControllerBase
 
         role.IsDeleted = true;
         role.DeletedAt = DateTime.UtcNow;
-        
+
         await _dbContext.SaveChangesAsync(ct);
         return NoContent();
     }
@@ -562,7 +565,8 @@ public class SecurityController : ControllerBase
                     ? existingUser.Profile?.Name ?? "company level"
                     : "system";
 
-            return Conflict(new {
+            return Conflict(new
+            {
                 message = "User already exists.",
                 existsAt = existsAt,
                 location = location,
@@ -1171,7 +1175,8 @@ public class SecurityController : ControllerBase
                 u.Email,
                 source,
                 true
-            ) { IsActive = u.IsActive };
+            )
+            { IsActive = u.IsActive };
         }).ToList();
 
         return Ok(new GroupMembersDto(members));
@@ -1295,7 +1300,8 @@ public class SecurityController : ControllerBase
             r.Name,
             r.Source,
             existingGroups.Contains(r.Id)
-        ) { ProfileId = profileId }).ToList();
+        )
+        { ProfileId = profileId }).ToList();
 
         return Ok(markedResults);
     }

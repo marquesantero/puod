@@ -47,11 +47,11 @@ public class AuthService : IAuthService
         else if (user.AuthProvider == "WindowsAd")
         {
             var provider = _serviceProvider.GetRequiredService<Puod.Services.User.Services.Identity.WindowsAdIdentityProvider>();
-            
+
             var domain = user.Email.Split('@').LastOrDefault() ?? "";
             var authProfile = await _dbContext.AuthProfiles
                 .FirstOrDefaultAsync(ap => ap.IsActive && ap.ProviderType == AuthProviderType.WindowsAd && ap.Domains.Contains(domain), ct);
-            
+
             if (authProfile != null)
             {
                 var config = System.Text.Json.JsonSerializer.Deserialize<WindowsAdConfig>(authProfile.ConfigJson);
@@ -98,9 +98,9 @@ public class AuthService : IAuthService
 
         foreach (var p in profiles)
         {
-            _logger.LogInformation("Profile: {Name}, Type: {Type}, Domains: {Domains}", 
-                p.Name, 
-                p.ProviderType, 
+            _logger.LogInformation("Profile: {Name}, Type: {Type}, Domains: {Domains}",
+                p.Name,
+                p.ProviderType,
                 p.Domains == null ? "NULL" : string.Join(", ", p.Domains));
         }
 
@@ -126,12 +126,12 @@ public class AuthService : IAuthService
 
         if (profile.ProviderType == AuthProviderType.AzureAd)
         {
-            try 
+            try
             {
                 if (string.IsNullOrWhiteSpace(profile.ConfigJson) || profile.ConfigJson == "{}")
                 {
-                     _logger.LogWarning("AuthProfile {Id} has empty config.", profile.Id);
-                     return new DiscoveryResponse("Local", null, null, null, "Local Authentication");
+                    _logger.LogWarning("AuthProfile {Id} has empty config.", profile.Id);
+                    return new DiscoveryResponse("Local", null, null, null, "Local Authentication");
                 }
 
                 var config = System.Text.Json.JsonSerializer.Deserialize<AzureAdConfig>(profile.ConfigJson);
@@ -154,7 +154,7 @@ public class AuthService : IAuthService
         }
         else if (profile.ProviderType == AuthProviderType.WindowsAd)
         {
-             return new DiscoveryResponse("WindowsAd", null, null, companyName, "Windows AD");
+            return new DiscoveryResponse("WindowsAd", null, null, companyName, "Windows AD");
         }
 
         return new DiscoveryResponse("Local", null, null, companyName, "Local Authentication");
@@ -229,8 +229,8 @@ public class AuthService : IAuthService
                 _logger.LogError(msalEx, "Azure AD authentication failed. ErrorCode: {ErrorCode}", msalEx.ErrorCode);
                 throw new InvalidOperationException($"Authentication failed: {msalEx.Message}");
             }
-            
-            var email = result.Account.Username; 
+
+            var email = result.Account.Username;
             _logger.LogInformation("Token acquired for email: {Email}", email);
 
             // Search user by Email (case insensitive)
@@ -482,7 +482,7 @@ public class AuthService : IAuthService
         var clientRoleIds = await _dbContext.UserTenantRoles
             .Where(utr => utr.UserId == userId
                           && utr.ClientId == clientId
-                         
+
                           && (utr.CompanyIds == null || utr.CompanyIds.Count == 0))
             .Select(utr => utr.RoleId)
             .Where(roleId => roleId.HasValue)
@@ -491,7 +491,7 @@ public class AuthService : IAuthService
 
         var groupRoleIds = await _dbContext.GroupTenantRoles
             .Where(gtr => gtr.ClientId == clientId
-                         
+
                           && (gtr.CompanyIds == null || gtr.CompanyIds.Count == 0))
             .Join(_dbContext.UserGroups.Where(ug => ug.UserId == userId),
                 gtr => gtr.GroupId,
