@@ -2,8 +2,12 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Loader2, X, AlertCircle, Maximize2, Minimize2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { getDashboard, type StudioDashboardDetailDto } from "@/lib/studioDashboardsApi";
-import { getCard, type StudioCardDetailDto } from "@/lib/studioCardsApi";
+import {
+  getStudioDashboard as getDashboard,
+  getStudioCard as getCard,
+  type StudioDashboardDetail as StudioDashboardDetailDto,
+  type StudioCardDetail as StudioCardDetailDto,
+} from "@/lib/studioApi";
 import { executeQuery, type QueryResultDto } from "@/lib/biIntegrationApi";
 import { CardDataRenderer } from "@/components/studio/cards/CardDataRenderer";
 import { useI18n } from "@/contexts/I18nContext";

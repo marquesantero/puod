@@ -7,13 +7,12 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Sparkles, Code, Wand2, Loader2 } from "lucide-react";
 import { CardTemplatesBrowser } from "./CardTemplatesBrowser";
 import { VisualQueryBuilder } from "./VisualQueryBuilder";
-import { QueryEditor } from "./QueryEditor";
 import { CardDataRenderer } from "./CardDataRenderer";
-import { createCard, testCard } from "@/lib/studioCardsApi";
+import { createStudioCard as createCard } from "@/lib/studioApi";
 import { getIntegrations, type IntegrationListResponse, executeQuery } from "@/lib/biIntegrationApi";
-import { cardTemplates, fillTemplate, type CardTemplate } from "@/lib/cardTemplates";
+import { fillTemplate, type CardTemplate } from "@/lib/cardTemplates";
 import { useToast } from "@/contexts/ToastContext";
-import { useI18n } from "@/contexts/I18nContext";
+
 
 interface QuickCardCreatorProps {
   open: boolean;
@@ -28,7 +27,6 @@ type CardType = "kpi" | "table" | "grid" | "chart" | "timeline";
 
 export function QuickCardCreator({ open, onClose, onCardCreated, profileId, clientId }: QuickCardCreatorProps) {
   const { showToast } = useToast();
-  const { t } = useI18n();
 
   // Mode & Steps
   const [mode, setMode] = useState<CreationMode>("template");
@@ -45,11 +43,11 @@ export function QuickCardCreator({ open, onClose, onCardCreated, profileId, clie
   const [integrations, setIntegrations] = useState<IntegrationListResponse[]>([]);
   const [selectedIntegration, setSelectedIntegration] = useState<number | undefined>();
   const [query, setQuery] = useState("");
-  const [queryMode, setQueryMode] = useState<"visual" | "sql">("visual");
+  const [_queryMode, setQueryMode] = useState<"visual" | "sql">("visual");
 
   // Preview
   const [previewLoading, setPreviewLoading] = useState(false);
-  const [previewData, setPreviewData] = useState<any>(null);
+  const [previewData, setPreviewData] = useState<Record<string, unknown> | null>(null);
   const [previewError, setPreviewError] = useState<string | undefined>();
 
   // Creation

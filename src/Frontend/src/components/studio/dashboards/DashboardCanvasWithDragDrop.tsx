@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
@@ -16,6 +16,7 @@ import { SnapGuides } from "./SnapGuides";
 import { useToast } from "@/contexts/ToastContext";
 import { useI18n } from "@/contexts/I18nContext";
 import { useUndoRedo } from "@/hooks/useUndoRedo";
+import { useCanvasShortcuts } from "@/hooks/useCanvasShortcuts";
 import { findSnapPosition } from "@/lib/canvasLayouts";
 import {
   exportDashboard,
@@ -38,13 +39,15 @@ import { getClients, type ClientListResponse } from "@/lib/clientApi";
 import { getCompanies, type CompanyListResponse } from "@/lib/companyApi";
 import type { DashboardConfig } from "./DashboardWizard";
 import {
-  getDashboard,
-  createDashboard,
-  updateDashboard,
-  type StudioDashboardDetailDto,
-  type UpsertStudioDashboardCardRequest
-} from "@/lib/studioDashboardsApi";
-import { getCard, updateCard, createCard } from "@/lib/studioCardsApi";
+  getStudioDashboard as getDashboard,
+  createStudioDashboard as createDashboard,
+  updateStudioDashboard as updateDashboard,
+  getStudioCard as getCard,
+  updateStudioCard as updateCard,
+  createStudioCard as createCard,
+  type StudioDashboardDetail as StudioDashboardDetailDto,
+  type UpsertStudioDashboardCardRequest,
+} from "@/lib/studioApi";
 
 interface DashboardCanvasProps {
   config: DashboardConfig;
@@ -678,6 +681,55 @@ export function DashboardCanvas({ config, dashboardId, onSave, onBack }: Dashboa
       setSaving(false);
     }
   };
+
+  // ── Keyboard shortcuts ──
+  const handleDeleteSelected = useCallback(() => {
+    if (selectedCard !== null) {
+      handleRemoveCard(selectedCard);
+      setSelectedCard(null);
+    }
+  }, [selectedCard, cards]);
+
+  const handleDuplicateSelected = useCallback(() => {
+    if (selectedCard === null) return;
+    const source = cards.find((c) => c.id === selectedCard);
+    if (!source) return;
+    const tempId = nextTempIdRef.current;
+    nextTempIdRef.current -= 1;
+    const clone: CanvasCard = {
+      ...source,
+      id: tempId,
+      x: source.x + GRID_SIZE,
+      y: source.y + GRID_SIZE,
+      orderIndex: cards.length,
+    };
+    setCards([...cards, clone]);
+    setSelectedCard(tempId);
+  }, [selectedCard, cards, setCards]);
+
+  const handleEscapeKey = useCallback(() => {
+    if (contextMenu) {
+      setContextMenu(null);
+    } else if (configuringCard !== null) {
+      setConfiguringCard(null);
+    } else if (basicConfiguringCard !== null) {
+      setBasicConfiguringCard(null);
+    } else if (showQuickCardCreator) {
+      setShowQuickCardCreator(false);
+    } else {
+      setSelectedCard(null);
+    }
+  }, [contextMenu, configuringCard, basicConfiguringCard, showQuickCardCreator]);
+
+  useCanvasShortcuts({
+    onUndo: undo,
+    onRedo: redo,
+    onSave: handleSave,
+    onDeleteSelected: handleDeleteSelected,
+    onDuplicateSelected: handleDuplicateSelected,
+    onEscape: handleEscapeKey,
+    onToggleFullscreen: () => setIsFullscreen((prev) => !prev),
+  });
 
   // Quick Card Creator handler
   const handleQuickCardCreated = async (cardData: {

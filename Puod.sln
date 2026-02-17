@@ -13,15 +13,15 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Puod.Services.User", "src\S
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Puod.Services.Integration", "src\Services\Integration\Puod.Services.Integration\Puod.Services.Integration.csproj", "{C1A5FD92-F8D4-4999-AA97-9FB40B5C1CB0}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Puod.Services.Monitoring", "src\Services\Monitoring\Puod.Services.Monitoring\Puod.Services.Monitoring.csproj", "{6863ED15-7AF9-482A-91CE-0D8DA5191749}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Puod.Services.Monitoring", "src\Services\Monitoring\Puod.Services.Monitoring.csproj", "{6863ED15-7AF9-482A-91CE-0D8DA5191749}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Puod.Services.Reporting", "src\Services\Reporting\Puod.Services.Reporting\Puod.Services.Reporting.csproj", "{2951689E-379F-47FF-B31E-9A293A3C8FC4}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Puod.Services.Studio", "src\Services\Studio\Puod.Services.Studio\Puod.Services.Studio.csproj", "{AF49CECC-2088-435E-AE8C-D5FC3331601C}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Puod.Shared.Common", "src\Shared\Common\Puod.Shared.Common\Puod.Shared.Common.csproj", "{D1ADEE94-F7CB-436A-8103-28A1E760161C}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Puod.Shared.Common", "src\Shared\Common\Puod.Shared.Common.csproj", "{D1ADEE94-F7CB-436A-8103-28A1E760161C}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Puod.Shared.Contracts", "src\Shared\Contracts\Puod.Shared.Contracts\Puod.Shared.Contracts.csproj", "{42C21379-8648-409E-A36A-89DE8502CC9B}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Puod.Shared.Contracts", "src\Shared\Contracts\Puod.Shared.Contracts.csproj", "{42C21379-8648-409E-A36A-89DE8502CC9B}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Services", "Services", "{984BB9B3-3FA3-BE33-9484-CAC21695A33C}"
 EndProject

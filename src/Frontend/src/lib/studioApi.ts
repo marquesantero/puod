@@ -10,10 +10,28 @@ import type {
   StudioDashboardCreateRequest,
   StudioDashboardDetail,
   StudioDashboardUpdateRequest,
+  StudioDashboardCard,
   StudioScope,
   StudioShare,
   StudioShareRequest,
 } from "@/types/studio";
+
+// Re-export all types from @/types/studio for centralized access
+export type { StudioCard, StudioCardCreateRequest, StudioCardDetail, StudioCardTestRequest, StudioCardTestResult, StudioCardUpdateRequest } from "@/types/studio";
+export type { StudioDashboard, StudioDashboardCreateRequest, StudioDashboardDetail, StudioDashboardUpdateRequest, StudioDashboardCard } from "@/types/studio";
+export type { StudioScope, StudioShare, StudioShareRequest, StudioShareTarget, StudioShareSubject, StudioShareAccess } from "@/types/studio";
+export type { StudioCardStatus, StudioDashboardStatus } from "@/types/studio";
+
+// Type aliases for backward compatibility with studioCardsApi / studioDashboardsApi consumers
+export type StudioCardDto = StudioCard;
+export type StudioCardDetailDto = StudioCardDetail;
+export type StudioDashboardDto = StudioDashboard;
+export type StudioDashboardDetailDto = StudioDashboardDetail;
+export type StudioDashboardCardDto = StudioDashboardCard;
+export type CreateStudioCardRequest = StudioCardCreateRequest;
+export type UpdateStudioCardRequest = StudioCardUpdateRequest;
+export type CreateStudioDashboardRequest = StudioDashboardCreateRequest;
+export type UpsertStudioDashboardCardRequest = NonNullable<StudioDashboardUpdateRequest["cards"]>[number];
 
 export async function listStudioCards(scope?: StudioScope, clientId?: number, profileId?: number): Promise<StudioCard[]> {
   const response = await apiClient.get<StudioCard[]>("/studio/cards", {
@@ -121,3 +139,46 @@ export async function createStudioShare(payload: StudioShareRequest): Promise<St
 export async function deleteStudioShare(id: number): Promise<void> {
   await apiClient.delete(`/studio/shares/${id}`);
 }
+
+// =============================================
+// Templates
+// =============================================
+
+export async function getStudioTemplates(integrationId?: number): Promise<StudioCard[]> {
+  const response = await apiClient.get<StudioCard[]>("/studio/cards/templates", {
+    params: integrationId ? { integrationId } : undefined,
+  });
+  return response.data;
+}
+
+// =============================================
+// Short aliases (backward compat with studioCardsApi / studioDashboardsApi)
+// =============================================
+
+/** @deprecated Use listStudioCards */
+export const getCards = listStudioCards;
+/** @deprecated Use getStudioCard */
+export const getCard = getStudioCard;
+/** @deprecated Use createStudioCard */
+export const createCard = createStudioCard;
+/** @deprecated Use updateStudioCard */
+export const updateCard = updateStudioCard;
+/** @deprecated Use deleteStudioCard */
+export const deleteCard = deleteStudioCard;
+/** @deprecated Use cloneStudioCard */
+export const cloneCard = cloneStudioCard;
+/** @deprecated Use testStudioCard */
+export const testCard = testStudioCard;
+/** @deprecated Use getStudioTemplates */
+export const getTemplates = getStudioTemplates;
+
+/** @deprecated Use listStudioDashboards */
+export const getDashboards = listStudioDashboards;
+/** @deprecated Use getStudioDashboard */
+export const getDashboard = getStudioDashboard;
+/** @deprecated Use createStudioDashboard */
+export const createDashboard = createStudioDashboard;
+/** @deprecated Use updateStudioDashboard */
+export const updateDashboard = updateStudioDashboard;
+/** @deprecated Use deleteStudioDashboard */
+export const deleteDashboard = deleteStudioDashboard;

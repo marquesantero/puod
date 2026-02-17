@@ -285,7 +285,7 @@ app.MapGet("/health", () => new
 // Execute Seeder
 using (var scope = app.Services.CreateScope())
 {
-    try 
+    try
     {
         var dbContext = scope.ServiceProvider.GetRequiredService<PuodDbContext>();
         var schemaEnsurer = scope.ServiceProvider.GetRequiredService<RoleLinkSchemaEnsurer>();

@@ -39,7 +39,7 @@ nupkg/
 *.vsidx
 *.vsconfig
 *.suo
-*.user
+*.csproj.user
 *.userosscache
 *.sln.docstates
 *.vspscc

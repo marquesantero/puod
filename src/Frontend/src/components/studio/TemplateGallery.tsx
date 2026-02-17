@@ -1,10 +1,12 @@
-import { useState, useEffect, useMemo } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useState, useMemo } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { Card, CardContent, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/contexts/ToastContext";
-import { getTemplates, cloneCard, type StudioCardDto } from "@/lib/studioCardsApi";
 import { getIntegrations, type IntegrationListResponse } from "@/lib/biIntegrationApi";
 import { Database, BarChart3, Workflow, Factory, Loader2, Server } from "lucide-react";
+import { useStudioTemplates, useCloneStudioCard } from "@/hooks/useStudioQueries";
+import type { StudioCard as StudioCardDto } from "@/lib/studioApi";
 
 interface TemplateGalleryProps {
   profileId?: number;
@@ -14,37 +16,23 @@ interface TemplateGalleryProps {
 export function TemplateGallery({ profileId, onTemplateSelected }: TemplateGalleryProps) {
   const { showToast } = useToast();
 
-  const [templates, setTemplates] = useState<StudioCardDto[]>([]);
-  const [integrations, setIntegrations] = useState<IntegrationListResponse[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { data: templates = [], isLoading: templatesLoading } = useStudioTemplates();
+  const { data: integrations = [], isLoading: integrationsLoading } = useQuery({
+    queryKey: ["integrations", profileId],
+    queryFn: () => (profileId ? getIntegrations(profileId) : Promise.resolve([])),
+    staleTime: 60_000,
+  });
+
+  const loading = templatesLoading || integrationsLoading;
   const [cloning, setCloning] = useState<number | null>(null);
   const [selectedIntegrationType, setSelectedIntegrationType] = useState<string | null>(null);
 
-  useEffect(() => {
-    loadData();
-  }, [profileId]);
-
-  const loadData = async () => {
-    try {
-      setLoading(true);
-      const [templatesData, integrationsData] = await Promise.all([
-        getTemplates(),
-        profileId ? getIntegrations(profileId) : Promise.resolve([]),
-      ]);
-      setTemplates(templatesData);
-      setIntegrations(integrationsData);
-    } catch (error) {
-      console.error("Failed to load templates:", error);
-      showToast("Failed to load templates", { variant: "destructive" });
-    } finally {
-      setLoading(false);
-    }
-  };
+  const cloneMutation = useCloneStudioCard();
 
   const handleCloneTemplate = async (templateId: number) => {
     try {
       setCloning(templateId);
-      const clonedCard = await cloneCard(templateId);
+      const clonedCard = await cloneMutation.mutateAsync(templateId);
       showToast("Template cloned successfully", { variant: "success" });
       if (onTemplateSelected) {
         onTemplateSelected(clonedCard.id);
@@ -99,7 +87,7 @@ export function TemplateGallery({ profileId, onTemplateSelected }: TemplateGalle
     if (!selectedIntegrationType) return templatesByIntegration;
 
     return Object.fromEntries(
-      Object.entries(templatesByIntegration).filter(([_, group]) => {
+      Object.entries(templatesByIntegration).filter(([, group]) => {
         if (!group.integration) return selectedIntegrationType === "generic";
         return group.integration.type === selectedIntegrationType;
       })

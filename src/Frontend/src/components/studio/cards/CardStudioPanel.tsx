@@ -9,21 +9,22 @@ import { useI18n } from "@/contexts/I18nContext";
 import { useToast } from "@/contexts/ToastContext";
 import { FieldEditor, type StudioField } from "@/components/studio/shared/FieldEditor";
 import { StyleEditor, type StudioStyle } from "@/components/studio/shared/StyleEditor";
-import type { ClientListResponse } from "@/lib/clientApi";
-import type { CompanyListResponse } from "@/lib/companyApi";
-import type { StudioCard, StudioCardStatus, StudioScope } from "@/types/studio";
-import {
-  cloneStudioCard,
-  createStudioCard,
-  deleteStudioCard,
-  getStudioCard,
-  listStudioCards,
-  testStudioCard,
-  updateStudioCard,
-} from "@/lib/studioApi";
+import type { StudioCardStatus, StudioScope } from "@/types/studio";
+import { validateCardDraft } from "@/lib/studioValidation";
 import { getClients } from "@/lib/clientApi";
 import { getCompanies } from "@/lib/companyApi";
 import { getClientIntegrations, getCompanyAvailableIntegrations } from "@/lib/biIntegrationApi";
+import type { ClientListResponse } from "@/lib/clientApi";
+import type { CompanyListResponse } from "@/lib/companyApi";
+import {
+  useStudioCards,
+  useStudioCard,
+  useCreateStudioCard,
+  useUpdateStudioCard,
+  useDeleteStudioCard,
+  useCloneStudioCard,
+  useTestStudioCard,
+} from "@/hooks/useStudioQueries";
 
 type StudioCardDraft = {
   id?: number;
@@ -94,21 +95,37 @@ const toJson = (value: unknown) => JSON.stringify(value ?? {});
 export function CardStudioPanel() {
   const { t } = useI18n();
   const { showToast } = useToast();
-  const [cards, setCards] = useState<StudioCard[]>([]);
   const [activeId, setActiveId] = useState<number | null>(null);
   const [draft, setDraft] = useState<StudioCardDraft>(() => defaultDraft("Company"));
   const [clients, setClients] = useState<ClientListResponse[]>([]);
   const [companies, setCompanies] = useState<CompanyListResponse[]>([]);
   const [integrations, setIntegrations] = useState<Array<{ id: number; name: string; type: string }>>([]);
-  const [loading, setLoading] = useState(false);
   const [testPayloadSignature, setTestPayloadSignature] = useState<string | null>(null);
   const [testPayload, setTestPayload] = useState<string | null>(null);
   const [testSuccess, setTestSuccess] = useState(false);
   const [testMessage, setTestMessage] = useState<string | null>(null);
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
+  const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
 
   const scopeId = draft.scope === "Client" ? draft.clientId : draft.profileId;
 
+  // ── TanStack Query: lista de cards ──
+  const {
+    data: cards = [],
+    isLoading: loading,
+  } = useStudioCards(draft.scope, draft.clientId, draft.profileId);
+
+  // ── TanStack Query: detalhe do card selecionado ──
+  const { data: activeCardData } = useStudioCard(activeId);
+
+  // ── TanStack Query: mutations ──
+  const createMutation = useCreateStudioCard();
+  const updateMutation = useUpdateStudioCard();
+  const deleteMutation = useDeleteStudioCard();
+  const cloneMutation = useCloneStudioCard();
+  const testMutation = useTestStudioCard();
+
+  // ── Clients e companies (mantido local por enquanto) ──
   useEffect(() => {
     getClients().then(setClients).catch(() => setClients([]));
     getCompanies().then(setCompanies).catch(() => setCompanies([]));
@@ -123,27 +140,14 @@ export function CardStudioPanel() {
     }
   }, [clients, companies, draft.scope, draft.clientId, draft.profileId]);
 
-  const loadCards = async () => {
-    if (!scopeId) return;
-    setLoading(true);
-    try {
-      const list = await listStudioCards(draft.scope, draft.clientId, draft.profileId);
-      setCards(list);
-      if (!activeId && list.length) {
-        setActiveId(list[0].id);
-      }
-    } catch (error) {
-      showToast(t("studioCardsLoadFailed"), { variant: "error" });
-    } finally {
-      setLoading(false);
-    }
-  };
-
+  // Auto-selecionar primeiro card quando a lista carrega
   useEffect(() => {
-    loadCards();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [draft.scope, draft.clientId, draft.profileId]);
+    if (!activeId && cards.length) {
+      setActiveId(cards[0].id);
+    }
+  }, [cards, activeId]);
 
+  // ── Integrations (mantido local por enquanto) ──
   useEffect(() => {
     const loadIntegrations = async () => {
       if (!scopeId) return;
@@ -158,35 +162,33 @@ export function CardStudioPanel() {
     loadIntegrations().catch(() => setIntegrations([]));
   }, [draft.scope, scopeId]);
 
+  // ── Preencher draft quando card detail é carregado via TanStack Query ──
   useEffect(() => {
-    if (!activeId) return;
-    getStudioCard(activeId)
-      .then((card) => {
-        setDraft({
-          id: card.id,
-          title: card.title,
-          description: card.description ?? "",
-          scope: card.scope,
-          clientId: card.clientId ?? undefined,
-          profileId: card.profileId ?? undefined,
-          cardType: card.cardType,
-          layoutType: card.layoutType,
-          integrationId: card.integrationId ?? undefined,
-          query: card.query ?? "",
-          refreshMode: (parseJson(card.refreshPolicyJson, { mode: "Interval" }).mode ?? "Interval") as "Manual" | "Interval" | "Inherit",
-          refreshInterval: parseJson(card.refreshPolicyJson, { interval: "5m" }).interval ?? "5m",
-          fields: parseJson(card.fieldsJson, []),
-          style: parseJson(card.styleJson, defaultStyle),
-          layout: parseJson(card.layoutJson, {}),
-          dataSource: parseJson(card.dataSourceJson, {}),
-        });
-        setTestSuccess(Boolean(card.lastTestSucceeded));
-        setTestPayloadSignature(card.lastTestSignature ?? null);
-        setTestPayload(null);
-        setTestMessage(null);
-      })
-      .catch(() => showToast(t("studioCardLoadFailed"), { variant: "error" }));
-  }, [activeId, showToast, t]);
+    if (!activeCardData) return;
+    const card = activeCardData;
+    setDraft({
+      id: card.id,
+      title: card.title,
+      description: card.description ?? "",
+      scope: card.scope,
+      clientId: card.clientId ?? undefined,
+      profileId: card.profileId ?? undefined,
+      cardType: card.cardType,
+      layoutType: card.layoutType,
+      integrationId: card.integrationId ?? undefined,
+      query: card.query ?? "",
+      refreshMode: (parseJson(card.refreshPolicyJson, { mode: "Interval" }).mode ?? "Interval") as "Manual" | "Interval" | "Inherit",
+      refreshInterval: parseJson(card.refreshPolicyJson, { interval: "5m" }).interval ?? "5m",
+      fields: parseJson(card.fieldsJson, []),
+      style: parseJson(card.styleJson, defaultStyle),
+      layout: parseJson(card.layoutJson, {}),
+      dataSource: parseJson(card.dataSourceJson, {}),
+    });
+    setTestSuccess(Boolean(card.lastTestSucceeded));
+    setTestPayloadSignature(card.lastTestSignature ?? null);
+    setTestPayload(null);
+    setTestMessage(null);
+  }, [activeCardData]);
 
   const cardPayload = useMemo(
     () =>
@@ -213,7 +215,7 @@ export function CardStudioPanel() {
 
   const handleTest = async () => {
     setTestMessage(null);
-    const result = await testStudioCard({
+    const result = await testMutation.mutateAsync({
       integrationId: draft.integrationId,
       query: draft.query,
       cardType: draft.cardType,
@@ -240,6 +242,16 @@ export function CardStudioPanel() {
   };
 
   const handleSave = async () => {
+    // Validate draft with Zod
+    const validation = validateCardDraft(draft);
+    if (!validation.success) {
+      setValidationErrors(validation.errors);
+      const firstError = Object.values(validation.errors)[0];
+      showToast(firstError, { variant: "error" });
+      return;
+    }
+    setValidationErrors({});
+
     const requiresTest = Boolean(draft.integrationId && draft.query.trim());
     if (requiresTest && (!testSuccess || !testPayloadSignature)) {
       showToast(t("studioTestRequired"), { variant: "error" });
@@ -267,28 +279,29 @@ export function CardStudioPanel() {
 
     try {
       if (draft.id) {
-        const updated = await updateStudioCard(draft.id, payloadBase);
+        const updated = await updateMutation.mutateAsync({ id: draft.id, payload: payloadBase });
         setActiveId(updated.id);
         showToast(t("studioCardSaved"), { variant: "success" });
       } else {
-        const created = await createStudioCard(payloadBase);
+        const created = await createMutation.mutateAsync(payloadBase);
         setActiveId(created.id);
         showToast(t("studioCardCreated"), { variant: "success" });
       }
-      await loadCards();
-    } catch (error: any) {
-      showToast(error?.response?.data?.message ?? t("studioCardSaveFailed"), { variant: "error" });
+      // TanStack Query invalida automaticamente a lista de cards
+    } catch (error: unknown) {
+      const errMsg = (error as { response?: { data?: { message?: string } } })?.response?.data?.message;
+      showToast(errMsg ?? t("studioCardSaveFailed"), { variant: "error" });
     }
   };
 
   const handleDelete = async () => {
     if (!draft.id) return;
     try {
-      await deleteStudioCard(draft.id);
+      await deleteMutation.mutateAsync(draft.id);
       setActiveId(null);
       setDraft(defaultDraft(draft.scope, draft.clientId, draft.profileId));
       showToast(t("studioCardDeleted"), { variant: "info" });
-      await loadCards();
+      // TanStack Query invalida automaticamente a lista de cards
     } catch {
       showToast(t("studioCardDeleteFailed"), { variant: "error" });
     } finally {
@@ -299,10 +312,10 @@ export function CardStudioPanel() {
   const handleClone = async () => {
     if (!draft.id) return;
     try {
-      const cloned = await cloneStudioCard(draft.id);
+      const cloned = await cloneMutation.mutateAsync(draft.id);
       setActiveId(cloned.id);
       showToast(t("studioCardCloned"), { variant: "success" });
-      await loadCards();
+      // TanStack Query invalida automaticamente a lista de cards
     } catch {
       showToast(t("studioCardCloneFailed"), { variant: "error" });
     }
@@ -338,7 +351,7 @@ export function CardStudioPanel() {
   const cardTypeLabels = useMemo(() => {
     return cardTemplateDefs.reduce(
       (acc, item) => {
-        acc[item.value] = t(item.labelKey as any);
+        acc[item.value] = t(item.labelKey as never);
         return acc;
       },
       {} as Record<string, string>
@@ -481,9 +494,16 @@ export function CardStudioPanel() {
                 <Label>{t("name")}</Label>
                 <Input
                   value={draft.title}
-                  onChange={(event) => setDraft((prev) => ({ ...prev, title: event.target.value }))}
+                  onChange={(event) => {
+                    setDraft((prev) => ({ ...prev, title: event.target.value }));
+                    if (validationErrors.title) setValidationErrors((prev) => ({ ...prev, title: "" }));
+                  }}
                   placeholder={t("studioCardNamePlaceholder")}
+                  className={validationErrors.title ? "border-red-500" : ""}
                 />
+                {validationErrors.title && (
+                  <p className="text-xs text-red-500">{validationErrors.title}</p>
+                )}
               </div>
               <div className="space-y-1">
                 <Label>{t("description")}</Label>
@@ -505,7 +525,7 @@ export function CardStudioPanel() {
                   <SelectContent>
                     {cardTemplateDefs.map((template) => (
                       <SelectItem key={template.value} value={template.value}>
-                        {t(template.labelKey as any)}
+                        {t(template.labelKey as never)}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -647,4 +667,3 @@ export function CardStudioPanel() {
     </div>
   );
 }
-

@@ -4,7 +4,7 @@ import { DashboardWizard, type DashboardConfig } from "@/components/studio/dashb
 import { DashboardCanvas } from "@/components/studio/dashboards/DashboardCanvasWithDragDrop";
 import { useToast } from "@/contexts/ToastContext";
 import { useI18n } from "@/contexts/I18nContext";
-import { deleteDashboard, getDashboard, updateDashboard } from "@/lib/studioDashboardsApi";
+import { deleteStudioDashboard as deleteDashboard, getStudioDashboard as getDashboard, updateStudioDashboard as updateDashboard } from "@/lib/studioApi";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 
 type ViewMode = "list" | "wizard" | "canvas";

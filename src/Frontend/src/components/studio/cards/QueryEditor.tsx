@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Play, Check, X, AlertCircle } from "lucide-react";
-import { testCard, type StudioCardTestResult } from "@/lib/studioCardsApi";
+import { testStudioCard as testCard, type StudioCardTestResult } from "@/lib/studioApi";
 
 interface QueryEditorProps {
   query?: string;
@@ -70,19 +70,20 @@ export function QueryEditor({
       if (result.success && result.signature && onTestSuccess) {
         onTestSuccess(result.signature, new Date());
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       // Extract error message from backend response
       let errorMessage = "Test failed";
+      const err = error as { response?: { data?: { errorMessage?: string; message?: string } }; message?: string };
 
-      if (error.response?.data?.errorMessage) {
+      if (err.response?.data?.errorMessage) {
         // Backend returned a structured error
-        errorMessage = error.response.data.errorMessage;
-      } else if (error.response?.data?.message) {
+        errorMessage = err.response.data.errorMessage;
+      } else if (err.response?.data?.message) {
         // Alternative error format
-        errorMessage = error.response.data.message;
-      } else if (error.message) {
+        errorMessage = err.response.data.message;
+      } else if (err.message) {
         // Generic error message
-        errorMessage = error.message;
+        errorMessage = err.message;
       }
 
       setTestResult({

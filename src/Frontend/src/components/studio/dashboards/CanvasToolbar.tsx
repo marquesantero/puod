@@ -242,9 +242,13 @@ export function CanvasToolbar({
 
       {/* Keyboard Shortcuts Hint */}
       <div className="text-[10px] text-muted-foreground text-center py-1">
-        💡 Tip: Use <kbd className="px-1.5 py-0.5 bg-muted border rounded text-[9px]">Ctrl+Z</kbd> to undo,{" "}
-        <kbd className="px-1.5 py-0.5 bg-muted border rounded text-[9px]">Ctrl+Shift+Z</kbd> to redo •{" "}
-        Drag cards to reposition • Right-click for options
+        <kbd className="px-1.5 py-0.5 bg-muted border rounded text-[9px]">Ctrl+Z</kbd> undo{" "}
+        <kbd className="px-1.5 py-0.5 bg-muted border rounded text-[9px]">Ctrl+Shift+Z</kbd> redo{" "}
+        <kbd className="px-1.5 py-0.5 bg-muted border rounded text-[9px]">Ctrl+S</kbd> save{" "}
+        <kbd className="px-1.5 py-0.5 bg-muted border rounded text-[9px]">Del</kbd> remove{" "}
+        <kbd className="px-1.5 py-0.5 bg-muted border rounded text-[9px]">Ctrl+D</kbd> duplicate{" "}
+        <kbd className="px-1.5 py-0.5 bg-muted border rounded text-[9px]">Esc</kbd> deselect{" "}
+        <kbd className="px-1.5 py-0.5 bg-muted border rounded text-[9px]">F11</kbd> fullscreen
       </div>
     </div>
   );
