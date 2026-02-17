@@ -1,0 +1,6 @@
+{
+  "Provider": "postgres",
+  "ConnectionString": "Host=localhost;Port=5432;Database=puod;Username=puod_user;Password=puodPasswd@25;SSL Mode=prefer",
+  "UpdatedAt": "2025-12-22T17:53:33.2696006Z",
+  "ProvisionedAt": "2025-12-22T17:53:35.0091436Z"
+}
