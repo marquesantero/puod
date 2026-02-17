@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/contexts/ToastContext";
 import { getIntegrations, type IntegrationListResponse } from "@/lib/biIntegrationApi";
@@ -87,7 +87,7 @@ export function TemplateGallery({ profileId, onTemplateSelected }: TemplateGalle
     if (!selectedIntegrationType) return templatesByIntegration;
 
     return Object.fromEntries(
-      Object.entries(templatesByIntegration).filter(([_, group]) => {
+      Object.entries(templatesByIntegration).filter(([, group]) => {
         if (!group.integration) return selectedIntegrationType === "generic";
         return group.integration.type === selectedIntegrationType;
       })

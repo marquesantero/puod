@@ -288,8 +288,9 @@ export function CardStudioPanel() {
         showToast(t("studioCardCreated"), { variant: "success" });
       }
       // TanStack Query invalida automaticamente a lista de cards
-    } catch (error: any) {
-      showToast(error?.response?.data?.message ?? t("studioCardSaveFailed"), { variant: "error" });
+    } catch (error: unknown) {
+      const errMsg = (error as { response?: { data?: { message?: string } } })?.response?.data?.message;
+      showToast(errMsg ?? t("studioCardSaveFailed"), { variant: "error" });
     }
   };
 
@@ -350,7 +351,7 @@ export function CardStudioPanel() {
   const cardTypeLabels = useMemo(() => {
     return cardTemplateDefs.reduce(
       (acc, item) => {
-        acc[item.value] = t(item.labelKey as any);
+        acc[item.value] = t(item.labelKey as never);
         return acc;
       },
       {} as Record<string, string>
@@ -524,7 +525,7 @@ export function CardStudioPanel() {
                   <SelectContent>
                     {cardTemplateDefs.map((template) => (
                       <SelectItem key={template.value} value={template.value}>
-                        {t(template.labelKey as any)}
+                        {t(template.labelKey as never)}
                       </SelectItem>
                     ))}
                   </SelectContent>

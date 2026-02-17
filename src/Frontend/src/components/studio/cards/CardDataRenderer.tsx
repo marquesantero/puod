@@ -19,7 +19,6 @@ interface CardDataRendererProps {
 export function CardDataRenderer({
   cardType,
   layoutType,
-  title: _title,
   integrationId,
   dataSourceJson,
   queryData,
