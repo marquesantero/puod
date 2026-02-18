@@ -15,7 +15,8 @@ export function decodeJwt(token: string): DecodedToken | null {
     }).join(''));
 
     return JSON.parse(jsonPayload);
-  } catch (e) {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  } catch (_e) {
     return null;
   }
 }

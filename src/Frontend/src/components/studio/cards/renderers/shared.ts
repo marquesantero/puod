@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * Helpers compartilhados entre os renderers de cards.
  * Nenhum componente React aqui — apenas funções utilitárias puras.

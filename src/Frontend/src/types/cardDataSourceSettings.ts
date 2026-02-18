@@ -44,7 +44,7 @@ export interface SynapseDataSourceSettings extends CardDataSourceSettings {
 export interface ApiDataSourceSettings extends CardDataSourceSettings {
   integrationType: "api";
   limit?: number;
-  filters?: Record<string, any>; // Generic filters for API calls
+  filters?: Record<string, unknown>; // Generic filters for API calls
 }
 
 // Union type for all data source settings

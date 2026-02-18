@@ -77,12 +77,11 @@ export async function testStudioCard(payload: StudioCardTestRequest): Promise<St
     return response.data;
   }
 
-  const data = response.data as any;
-  const errorMessage =
+  const data = response.data as unknown;
+  const typedData = data as Record<string, unknown>;
+  const errorMessage: string =
     (typeof data === "string" && data.trim()) ||
-    data?.message ||
-    data?.errorMessage ||
-    data?.title ||
+    String(typedData?.message || typedData?.errorMessage || typedData?.title || "") ||
     (data ? JSON.stringify(data) : "");
 
   return {

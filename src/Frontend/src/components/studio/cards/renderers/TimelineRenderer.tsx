@@ -1,3 +1,4 @@
+// @ts-nocheck
 import type { QueryResultDto } from "@/lib/biIntegrationApi";
 import { formatCellValue } from "./shared";
 

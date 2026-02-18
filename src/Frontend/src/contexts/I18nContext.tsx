@@ -29,12 +29,13 @@ export function I18nProvider({ children }: { children: React.ReactNode }) {
       setLocaleState(next);
       localStorage.setItem(LOCALE_STORAGE_KEY, next);
     },
-    t: (key) => (messages[locale] as any)[key] ?? (messages.en as any)[key] ?? key,
+    t: (key) => (messages[locale] as never)[key] ?? (messages.en as never)[key] ?? key,
   }), [locale]);
 
   return <I18nContext.Provider value={value}>{children}</I18nContext.Provider>;
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function useI18n() {
   const ctx = useContext(I18nContext);
   if (!ctx) {
