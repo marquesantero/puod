@@ -38,7 +38,7 @@ export type AuthProfileDetailResponse = {
   name: string;
   providerType: AuthProviderType;
   domains: string[];
-  config: any;
+  config: Record<string, unknown>;
   isActive: boolean;
   createdAt: string;
   updatedAt?: string;
@@ -51,7 +51,7 @@ export type AuthProfileCreateRequest = {
   name: string;
   providerType: AuthProviderType;
   domains: string[];
-  config: any;
+  config: Record<string, unknown>;
 };
 
 export type AuthProfileUpdateRequest = {
@@ -59,7 +59,7 @@ export type AuthProfileUpdateRequest = {
   domains: string[];
   companyIds?: number[];
   isActive?: boolean;
-  config: any;
+  config: Record<string, unknown>;
 };
 
 export type WindowsAdConfig = {

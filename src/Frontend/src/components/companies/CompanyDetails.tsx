@@ -11,8 +11,8 @@ import { SecurityManager } from "./SecurityManager";
 interface CompanyDetailsProps {
   company: CompanyDetailResponse;
   activeTab: string;
-  onTabChange: (tab: any) => void;
-  onEdit: (company: any) => void;
+  onTabChange: (tab: string) => void;
+  onEdit: (company: CompanyDetailResponse) => void;
   onDelete: (id: number) => void;
   onClose: () => void;
 }

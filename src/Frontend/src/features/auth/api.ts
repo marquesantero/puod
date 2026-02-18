@@ -16,7 +16,7 @@ export interface LoginResponse {
 export interface DiscoveryResponse {
   authMethod: "Local" | "WindowsAd" | "AzureAd";
   redirectUrl?: string;
-  config?: any;
+  config?: Record<string, unknown>;
   companyName?: string;
   providerDisplayName?: string;
 }

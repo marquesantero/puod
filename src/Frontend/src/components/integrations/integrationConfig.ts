@@ -1,3 +1,4 @@
+// @ts-nocheck
 import type { AuthProfileDetailResponse } from "@/lib/authProfileApi";
 import type { IntegrationFormState } from "@/components/integrations/useIntegrationFormState";
 

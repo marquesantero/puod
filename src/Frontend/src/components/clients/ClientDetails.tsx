@@ -11,8 +11,8 @@ import { ClientSecurityManager } from "./ClientSecurityManager";
 interface ClientDetailsProps {
   client: ClientDetailResponse;
   activeTab: string;
-  onTabChange: (tab: any) => void;
-  onEdit: (client: any) => void;
+  onTabChange: (tab: string) => void;
+  onEdit: (client: ClientDetailResponse) => void;
   onDelete: (id: number) => void;
   onClose: () => void;
 }

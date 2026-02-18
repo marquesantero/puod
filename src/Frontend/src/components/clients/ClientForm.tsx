@@ -5,12 +5,34 @@ import { Label } from "@/components/ui/label";
 import { useI18n } from "@/contexts/I18nContext";
 import { SubscriptionTier } from "@/lib/clientApi";
 
+interface ClientFormData {
+  name: string;
+  tier: SubscriptionTier;
+  isActive: boolean;
+  isAlterable: boolean;
+  logoUrl: string;
+  slug?: string;
+  email: string;
+  phone: string;
+  website: string;
+  address: string;
+  city: string;
+  state: string;
+  country: string;
+  postalCode: string;
+  description: string;
+  industry: string;
+  taxId: string;
+  employeeCount: string;
+  foundedDate: string;
+}
+
 interface ClientFormProps {
   editingId: string | null;
-  formData: any;
+  formData: ClientFormData;
   activeTab: string;
-  onTabChange: (tab: any) => void;
-  setFormData: (data: any) => void;
+  onTabChange: (tab: string) => void;
+  setFormData: (data: ClientFormData) => void;
   onLogoUpload: (e: React.ChangeEvent<HTMLInputElement>) => void;
   onSubmit: (e: React.FormEvent) => void;
   onCancel: () => void;

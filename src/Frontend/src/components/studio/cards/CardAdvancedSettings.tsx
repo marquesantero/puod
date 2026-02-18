@@ -44,12 +44,6 @@ export function CardAdvancedSettings({
   const [hoveredDag, setHoveredDag] = useState<string | null>(null);
   const [tempDagIds, setTempDagIds] = useState<string[]>([]); // Temporary list before saving
 
-  // Don't render if no valid integration type
-  if (!integrationType) {
-    console.warn('[CardAdvancedSettings] No integration type provided');
-    return null;
-  }
-
   // Update settings when dataSourceJson prop changes
   useEffect(() => {
     setSettings(parseDataSourceSettings(dataSourceJson));
@@ -72,6 +66,12 @@ export function CardAdvancedSettings({
       }
     }
   }, [editingDags, settings, integrationType]);
+
+  // Don't render if no valid integration type
+  if (!integrationType) {
+    console.warn('[CardAdvancedSettings] No integration type provided');
+    return null;
+  }
 
   // Handle DAG search (on-demand)
   const handleSearchDags = async () => {
