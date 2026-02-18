@@ -1,16 +1,13 @@
 import { useState } from "react";
 import { Search, Sparkles } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cardTemplates, categoryLabels, type CardTemplate } from "@/lib/cardTemplates";
-import { useI18n } from "@/contexts/I18nContext";
 
 interface CardTemplatesBrowserProps {
   onSelectTemplate: (template: CardTemplate) => void;
 }
 
 export function CardTemplatesBrowser({ onSelectTemplate }: CardTemplatesBrowserProps) {
-  const { t } = useI18n();
   const [selectedCategory, setSelectedCategory] = useState<CardTemplate["category"] | "all">("all");
   const [searchQuery, setSearchQuery] = useState("");
 

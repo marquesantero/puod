@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /** Badge visual de status reutilizado por todos os renderers de tabela. */
 export function StatusBadge({ status }: { status: any }) {
   const statusStr = String(status).toLowerCase();

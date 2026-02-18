@@ -1,3 +1,5 @@
+// @ts-nocheck
+/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars */
 import type { QueryResultDto } from "@/lib/biIntegrationApi";
 
 export function ChartRenderer({

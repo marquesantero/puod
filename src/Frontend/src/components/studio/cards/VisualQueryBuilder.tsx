@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { Plus, X, Trash2, Code, Eye } from "lucide-react";
+import { Plus, X, Code, Eye } from "lucide-react";
 import { listDatabases, listTables } from "@/lib/biIntegrationApi";
 import { useI18n } from "@/contexts/I18nContext";
 
@@ -36,35 +36,12 @@ export function VisualQueryBuilder({ integrationId, initialQuery, onQueryChange 
   const [selectedTable, setSelectedTable] = useState<string>("");
   const [columns, setColumns] = useState<ColumnSelection[]>([]);
   const [whereConditions, setWhereConditions] = useState<WhereCondition[]>([]);
-  const [groupByColumns, setGroupByColumns] = useState<string[]>([]);
-  const [orderBy, setOrderBy] = useState<{ column: string; direction: "ASC" | "DESC" }[]>([]);
+  const [groupByColumns] = useState<string[]>([]);
+  const [orderBy] = useState<{ column: string; direction: "ASC" | "DESC" }[]>([]);
   const [limit, setLimit] = useState<number>(100);
 
   // SQL mode state
   const [sqlQuery, setSqlQuery] = useState<string>(initialQuery || "");
-
-  // Load databases when integration changes
-  useEffect(() => {
-    if (integrationId) {
-      loadDatabases();
-    }
-  }, [integrationId]);
-
-  // Load tables when database changes
-  useEffect(() => {
-    if (integrationId && selectedDatabase) {
-      loadTables();
-    }
-  }, [integrationId, selectedDatabase]);
-
-  // Generate SQL when visual mode changes
-  useEffect(() => {
-    if (mode === "visual") {
-      const generatedSql = generateSQL();
-      setSqlQuery(generatedSql);
-      onQueryChange(generatedSql);
-    }
-  }, [mode, selectedTable, columns, whereConditions, groupByColumns, orderBy, limit]);
 
   const loadDatabases = async () => {
     if (!integrationId) return;
@@ -74,8 +51,8 @@ export function VisualQueryBuilder({ integrationId, initialQuery, onQueryChange 
       if (dbs.length > 0 && !selectedDatabase) {
         setSelectedDatabase(dbs[0]);
       }
-    } catch (error) {
-      console.error("Failed to load databases:", error);
+    } catch (_error) {
+      console.error("Failed to load databases:", _error);
     }
   };
 
@@ -84,8 +61,8 @@ export function VisualQueryBuilder({ integrationId, initialQuery, onQueryChange 
     try {
       const tbls = await listTables(integrationId, selectedDatabase);
       setTables(tbls);
-    } catch (error) {
-      console.error("Failed to load tables:", error);
+    } catch (_error) {
+      console.error("Failed to load tables:", _error);
     }
   };
 
@@ -148,6 +125,32 @@ export function VisualQueryBuilder({ integrationId, initialQuery, onQueryChange 
 
     return sql;
   };
+
+  // Load databases when integration changes
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    if (integrationId) {
+      loadDatabases();
+    }
+  }, [integrationId]);
+
+  // Load tables when database changes
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    if (integrationId && selectedDatabase) {
+      loadTables();
+    }
+  }, [integrationId, selectedDatabase]);
+
+  // Generate SQL when visual mode changes
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    if (mode === "visual") {
+      const generatedSql = generateSQL();
+      setSqlQuery(generatedSql);
+      onQueryChange(generatedSql);
+    }
+  }, [mode, selectedTable, columns, whereConditions, groupByColumns, orderBy, limit]);
 
   const addColumn = () => {
     setColumns([...columns, { id: crypto.randomUUID(), column: "", aggregate: "" }]);
@@ -272,7 +275,7 @@ export function VisualQueryBuilder({ integrationId, initialQuery, onQueryChange 
                 <select
                   className="w-32 h-9 px-3 rounded-md border border-border bg-background text-sm"
                   value={col.aggregate}
-                  onChange={(e) => updateColumn(col.id, { aggregate: e.target.value as any })}
+                  onChange={(e) => updateColumn(col.id, { aggregate: e.target.value as ColumnSelection["aggregate"] })}
                 >
                   <option value="">No aggregate</option>
                   <option value="SUM">SUM</option>
@@ -322,7 +325,7 @@ export function VisualQueryBuilder({ integrationId, initialQuery, onQueryChange 
                 <select
                   className="w-28 h-9 px-3 rounded-md border border-border bg-background text-sm"
                   value={cond.operator}
-                  onChange={(e) => updateWhereCondition(cond.id, { operator: e.target.value as any })}
+                  onChange={(e) => updateWhereCondition(cond.id, { operator: e.target.value as WhereCondition["operator"] })}
                 >
                   <option value="=">=</option>
                   <option value=">">{">"}</option>

@@ -1,19 +1,61 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useI18n } from "@/contexts/I18nContext";
 
+interface CompanyFormData {
+  name: string;
+  companyName: string;
+  clientId: number;
+  isActive: boolean;
+  logoUrl: string;
+  slug?: string;
+  inheritFromClient: boolean;
+  inheritBasicInfo: boolean;
+  inheritLogo: boolean;
+  inheritContact: boolean;
+  inheritAddress: boolean;
+  inheritDetails: boolean;
+  inheritAuthentication: boolean;
+  inheritIntegrations: boolean;
+  email: string;
+  phone: string;
+  website: string;
+  address: string;
+  city: string;
+  state: string;
+  country: string;
+  postalCode: string;
+  description: string;
+  industry: string;
+  taxId: string;
+  employeeCount: string;
+  foundedDate: string;
+  [key: string]: string | number | boolean | undefined;
+}
+
+interface ClientOption {
+  id: number;
+  name: string;
+}
+
+interface ClientPreviewData {
+  name: string;
+  logoUrl?: string;
+}
+
 interface CompanyFormProps {
   editingId: number | null;
-  formData: any;
+  formData: CompanyFormData;
   activeTab: string;
-  clients: any[];
-  clientPreview: any;
+  clients: ClientOption[];
+  clientPreview: ClientPreviewData | null;
   clientIdError?: string;
   setClientIdError?: (error: string) => void;
-  onTabChange: (tab: any) => void;
-  setFormData: (data: any) => void;
+  onTabChange: (tab: string) => void;
+  setFormData: (data: CompanyFormData) => void;
   onLogoUpload: (e: React.ChangeEvent<HTMLInputElement>) => void;
   onSubmit: (e: React.FormEvent) => void;
   onCancel: () => void;

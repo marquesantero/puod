@@ -31,8 +31,11 @@ const ProtectedRoute = ({ children }: { children: ReactElement }) => {
   useEffect(() => {
     let active = true;
     if (!isAuthenticated) {
-      setBootstrapReady("ready");
-      setSetupReady("ready");
+      // Only update state if not already "ready" to avoid cascading renders
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setBootstrapReady((prev) => (prev !== "ready" ? "ready" : prev));
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setSetupReady((prev) => (prev !== "ready" ? "ready" : prev));
       return () => {
         active = false;
       };

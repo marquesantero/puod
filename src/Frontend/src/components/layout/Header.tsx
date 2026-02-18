@@ -18,8 +18,11 @@ export default function Header() {
     if (token) {
       try {
         const payload = JSON.parse(atob(token.split('.')[1]));
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         setUserEmail(payload.email || payload.sub || "User");
-      } catch (e) {
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      } catch (_e) {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         setUserEmail("User");
       }
     }

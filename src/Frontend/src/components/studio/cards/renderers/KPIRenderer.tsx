@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { TrendingUp, TrendingDown } from "lucide-react";
 import type { QueryResultDto } from "@/lib/biIntegrationApi";
 

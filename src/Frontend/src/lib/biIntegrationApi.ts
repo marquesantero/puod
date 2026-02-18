@@ -122,11 +122,12 @@ export async function testConnection(request: TestConnectionRequest): Promise<Co
     return response.data;
   }
 
-  const data = response.data as any;
+  const data = response.data as unknown;
+  const typedData = data as Record<string, unknown>;
   const errorMessage =
     (typeof data === "string" && data.trim()) ||
-    data?.message ||
-    data?.title ||
+    typedData?.message ||
+    typedData?.title ||
     (data ? JSON.stringify(data) : "");
 
   const statusText = response.statusText ? ` ${response.statusText}` : "";
@@ -165,7 +166,7 @@ export type ExecuteQueryRequest = {
 export type QueryResultDto = {
   success: boolean;
   errorMessage?: string;
-  rows?: Record<string, any>[];
+  rows?: Record<string, unknown>[];
   rowCount: number;
   executionTimeMs: number;
 };
